@@ -1,0 +1,9 @@
+node_modules/
+dist/
+data/
+.env
+*.log
+music/*
+!music/README.md
+__pycache__/
+bench-results/
