@@ -276,6 +276,12 @@ On phones and in normal browser tabs, tap the page once to start the audio (brow
 3. *Settings → Advanced → Sources*: keep **Browser Source Hardware Acceleration** on.
 4. *Settings → Video*: 1920×1080, 60 FPS (or 30). Encoder on Intel Arc: **QuickSync AV1 / H.264**.
 
+**4K (3840×2160) or 1440p.** Set OBS *Base / Output resolution* and the browser source to the same size. The scene and
+the on-stream HUD scale with the source size. Dynamic resolution (panel → Graphics) lowers the internal render scale
+(down to half) when FPS drops, so the output stays 4K and smooth. Run `npm run benchmark -- 300 high` with the 4K source
+open: if it stays below ~30 FPS on your GPU, 2560×1440 is the better choice. A 4K stream also needs a fast upload
+(roughly 20–50 Mbps depending on the encoder; AV1 on Intel Arc needs the least).
+
 **Alternative: window capture.** If the browser source has GPU problems, run `live-window.bat` (or
 `live-window.bat portrait`): Edge / Chrome opens in a frameless window with autoplay on. In OBS add **Window Capture**
 (*Windows 10 (1903 and up)* method) and **Application Audio Capture** for the browser. Keep the window un-minimised.

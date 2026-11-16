@@ -275,6 +275,12 @@ Telefonda ve normal tarayıcı sekmesinde sesi başlatmak için sayfaya bir kez 
 3. *Ayarlar → Gelişmiş → Kaynaklar*: **Tarayıcı kaynağı donanım hızlandırma** açık kalsın.
 4. *Ayarlar → Video*: 1920×1080, 60 FPS (veya 30). Intel Arc'ta kodlayıcı: **QuickSync AV1 / H.264**.
 
+**4K (3840×2160) veya 1440p.** OBS'te *Temel / Çıkış çözünürlüğünü* ve tarayıcı kaynağını aynı boyuta ayarla. Sahne ve
+yayın arayüzü kaynak boyutuyla birlikte ölçeklenir. Dinamik çözünürlük (panel → Grafik) FPS düşünce iç çizim ölçeğini
+(yarıya kadar) düşürür; çıkış 4K kalır ve akıcı olur. 4K kaynak açıkken `npm run benchmark -- 300 high` çalıştır: ekran
+kartında ~30 FPS'in altında kalıyorsa 2560×1440 daha iyi seçimdir. 4K yayın ayrıca hızlı yükleme ister (kodlayıcıya göre
+kabaca 20–50 Mbps; Intel Arc'ta AV1 en azını kullanır).
+
 **Alternatif: pencere yakalama.** Tarayıcı kaynağında GPU sorunu olursa `live-window.bat` (veya `live-window.bat portrait`)
 çalıştır: Edge / Chrome çerçevesiz bir pencerede, otomatik oynatma açık şekilde açılır. OBS'e **Pencere Yakalama**
 (*Windows 10 (1903 ve üstü)* yöntemi) ve tarayıcı için **Uygulama Ses Yakalama** ekle. Pencereyi küçültme.
