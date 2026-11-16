@@ -7,6 +7,13 @@ import {
 type Lang = 'tr' | 'en';
 const I18N: Record<string, [string, string]> = {
   youtube: ['YouTube bağlantısı', 'YouTube connection'], url: ['Yayın URL’si', 'Stream URL'], connect: ['Bağlan', 'Connect'], disconnect: ['Bağlantıyı kes', 'Disconnect'],
+  platforms: ['Diğer platformlar', 'Other platforms'], channel: ['Kanal', 'Channel'], login: ['Twitch ile giriş', 'Log in with Twitch'], logout: ['Çıkış', 'Log out'],
+  account: ['Hesap', 'Account'], notConfigured: ['.env içinde tanımlı değil', 'not configured in .env'], enterCode: ['Bu kodu girin:', 'Enter this code:'],
+  twHelp: ['Resmi EventSub WebSocket. dev.twitch.tv → uygulama (Public istemci) → TWITCH_CLIENT_ID .env içine. Sonra “Twitch ile giriş”. Kanal boşsa kendi kanalınız okunur.', 'Official EventSub WebSocket. dev.twitch.tv → app (Public client) → TWITCH_CLIENT_ID in .env, then “Log in with Twitch”. Empty channel = your own channel.'],
+  kickHelp: ['Resmi Kick API webhook ile çalışır: bilgisayardaki webhook portunu bir tünelle (ör. Cloudflare Tunnel) internete açın ve Kick geliştirici ayarlarında Webhook URL olarak girin. Yalnızca bu port açılır, panel açılmaz.', 'Official Kick API via webhooks: expose the webhook port with a tunnel (e.g. Cloudflare Tunnel) and set it as the Webhook URL in Kick developer settings. Only that port is exposed, not the panel.'],
+  ttHelp: ['TikTok’un resmi canlı sohbet API’si yok. Bu bağlantı gayri resmi bir topluluk kütüphanesi ve üçüncü taraf imza servisi (Euler Stream) kullanır; her an bozulabilir ve TikTok kurallarıyla çelişebilir. Sorumluluk sizdedir. Kütüphane AGPL-3.0 lisanslıdır ve projeye dahil değildir: bir kez “npm run enable-tiktok” çalıştırın.', 'TikTok has no official LIVE chat API. This uses an unofficial community library and a third-party signing service (Euler Stream); it can break at any time and may conflict with TikTok’s terms. Use at your own risk. The library is AGPL-3.0 and not bundled: run “npm run enable-tiktok” once.'],
+  accept: ['Riskleri anladım, gayri resmi bağlantıya izin ver', 'I understand the risks, allow the unofficial connector'], webhookPort: ['Webhook portu', 'Webhook port'],
+  supporterVip: ['Destekçiler otomatik VIP olsun', 'Supporters get VIP automatically'],
   creds: ['Kimlik bilgileri', 'Credentials'], minPoll: ['Min. sorgu aralığı (ms)', 'Min poll interval (ms)'], apiKey: ['API anahtarı', 'API key'], oauth: ['OAuth', 'OAuth'], set: ['tanımlı', 'set'], notSet: ['tanımlı değil', 'not set'],
   credHelp: ['Anahtarlar yalnızca sunucudaki .env dosyasında tutulur ve tarayıcıya hiç gönderilmez. Değiştirmek için .env dosyasını düzenleyip sunucuyu yeniden başlatın.', 'Keys live only in the server-side .env file and are never sent to the browser. Edit .env and restart the server to change them.'],
   state: ['Durum', 'State'], transport: ['Aktarım', 'Transport'], video: ['Video', 'Video'], quota: ['Kullanılan kota (birim)', 'Quota used (units)'], msgs: ['İşlenen mesaj', 'Messages'],
@@ -32,6 +39,8 @@ const I18N: Record<string, [string, string]> = {
   stop: ['ACİL DURDUR', 'EMERGENCY STOP'], resume: ['Devam ettir', 'Resume'], live: ['Canlı', 'Live'], idle: ['Boşta', 'Idle'], uptime: ['Çalışma süresi', 'Uptime'],
 };
 
+const PCOL: Record<string, string> = { youtube: '#e8002d', twitch: '#9146ff', kick: '#1ec02e', tiktok: '#111' };
+const PLBL: Record<string, string> = { youtube: 'YT', twitch: 'TW', kick: 'KICK', tiktok: 'TT' };
 let lang: Lang = (localStorage.getItem('nc-lang') as Lang) || 'tr';
 const t = (k: string) => (I18N[k] ? I18N[k][lang === 'tr' ? 0 : 1] : k);
 let ws: WebSocket;
@@ -65,6 +74,15 @@ function render() {
   <div class="kv" id="ytInfo"></div>
   <h2 style="margin-top:12px">${t('creds')}</h2><div class="kv" id="credInfo"></div><p class="mut">${t('credHelp')}</p>
 </section>
+<section><h2>${t('platforms')}</h2>
+  ${(['twitch', 'kick', 'tiktok'] as const).map((p) => `<div class="plat" id="pl_${p}"><div class="row"><b style="min-width:70px">${p === 'twitch' ? 'Twitch' : p === 'kick' ? 'Kick' : 'TikTok'}</b><span class="pill" id="pls_${p}">—</span><span class="mut" id="pld_${p}"></span></div>
+    <div class="row"><input type="text" id="plc_${p}" placeholder="${p === 'tiktok' ? '@username' : t('channel')}" value="${esc(p === 'tiktok' ? s.platforms.tiktok.username : s.platforms[p].channel)}">
+    <button class="pri" data-pl="${p}" data-c="connect">${t('connect')}</button><button data-pl="${p}" data-c="disconnect">${t('disconnect')}</button></div>
+    ${p === 'twitch' ? `<div class="row"><button data-pl="twitch" data-c="login">${t('login')}</button><button data-pl="twitch" data-c="logout">${t('logout')}</button><span id="plAcc" class="mut"></span></div><div class="row" id="plCode"></div>` : ''}
+    ${p === 'kick' ? `<div class="row mut" id="plKick"></div>` : ''}
+    ${p === 'tiktok' ? `<div class="row"><label style="min-width:0">${chk('ttAccept', s.platforms.tiktok.acceptUnofficial)} ${t('accept')}</label></div>` : ''}
+    <p class="mut">${t(p === 'twitch' ? 'twHelp' : p === 'kick' ? 'kickHelp' : 'ttHelp')}</p></div>`).join('')}
+</section>
 <section class="wide"><h2>${t('chat')}</h2><div class="list chat" id="chat"></div></section>
 <section><h2>${t('members')} <span id="mCount"></span></h2>
   <div class="row"><label>${t('maxChars')}</label><input type="number" id="maxChars" min="1" max="300" value="${s.maxCharacters}"></div>
@@ -76,6 +94,7 @@ function render() {
 <section><h2>${t('superchat')}</h2><div class="row"><label>${t('effectsOn')}</label>${chk('scOn', s.superchat.enabled)}<span class="mut">${t('queue')}: <b id="scQueue">0</b></span></div>
   <div class="row"><label>${t('baseDur')}</label><input type="number" id="scDur" min="2000" max="20000" step="500" value="${s.superchat.baseDurationMs}"></div>
   <table>${SC_EFFECTS.map((e) => `<tr><td>${e}</td><td>${chk(`sc_on_${e}`, s.superchat.effects[e].on)}</td><td>${t('minTier')} <input type="number" min="1" max="11" id="sc_t_${e}" value="${s.superchat.effects[e].minTier}"></td></tr>`).join('')}</table>
+  <div class="row"><label>${t('supporterVip')}</label>${chk('supVip', s.supporterVip)}</div>
   <p class="mut">${t('scNote')}</p></section>
 <section><h2>${t('music')}</h2><div class="kv" id="musicInfo"></div>
   <div class="row"><button id="mPrev">⏮ ${t('prev')}</button><button id="mToggle">⏯ ${t('toggle')}</button><button id="mNext">${t('next')} ⏭</button><button id="mRescan">${t('rescan')}</button></div>
@@ -129,6 +148,12 @@ function bind() {
   on('ytConnect', 'click', () => { localStorage.setItem('nc-url', val('ytUrl')); send({ t: 'connect', url: val('ytUrl') }); });
   on('ytDisconnect', 'click', () => send({ t: 'disconnect' }));
   on('maxChars', 'change', () => patch({ maxCharacters: num('maxChars') }));
+  on('supVip', 'change', () => patch({ supporterVip: checked('supVip') }));
+  on('ttAccept', 'change', () => patch({ platforms: { ...state!.settings.platforms, tiktok: { ...state!.settings.platforms.tiktok, acceptUnofficial: checked('ttAccept') } } }));
+  document.querySelectorAll<HTMLElement>('[data-pl]').forEach((b) => b.addEventListener('click', () => {
+    const p = b.dataset.pl as 'twitch' | 'kick' | 'tiktok', c = b.dataset.c as 'connect' | 'disconnect' | 'login' | 'logout';
+    send({ t: 'platform', platform: p, cmd: c, channel: val(`plc_${p}`) });
+  }));
   on('minPoll', 'change', () => patch({ minPollMs: Math.max(1000, num('minPoll')) }));
   for (const c of COMMANDS) {
     const upd = () => patch({ commands: { ...state!.settings.commands, [c]: { on: checked(`cmd_on_${c}`), cooldown: num(`cmd_cd_${c}`) } } });
@@ -188,7 +213,7 @@ function renderMembers() {
   if (!box) return;
   $('mCount').textContent = `(${members.size})`;
   const list = [...members.values()].sort((a, b) => b.joinedAt - a.joinedAt).slice(0, 300);
-  box.innerHTML = list.map((m) => `<div class="it"><span class="n">${esc(m.name)}${m.source === 'demo' ? '<span class="tag">DEMO</span>' : '<span class="tag yt">YT</span>'}${m.vip ? '<span class="tag vip">VIP</span>' : ''} <span class="mut">${m.zone}${m.sitting ? ' · sit' : ''}</span></span>
+  box.innerHTML = list.map((m) => `<div class="it"><span class="n">${esc(m.name)}${m.source === 'demo' ? '<span class="tag">DEMO</span>' : `<span class="tag yt" style="background:${PCOL[m.source]}">${PLBL[m.source]}</span>`}${m.vip ? '<span class="tag vip">VIP</span>' : ''} <span class="mut">${m.zone}${m.sitting ? ' · sit' : ''}</span></span>
     <button data-a="cam" data-id="${esc(m.id)}">🎥</button><button data-a="vip" data-id="${esc(m.id)}">VIP</button><button data-a="kick" data-id="${esc(m.id)}">${t('kick')}</button><button data-a="block" data-id="${esc(m.id)}">${t('block')}</button></div>`).join('');
 }
 
@@ -196,7 +221,7 @@ function renderChat() {
   const box = $('chat');
   if (!box) return;
   const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 30;
-  box.innerHTML = chat.slice(-200).map((c) => `<div class="it"><span class="r">${esc(c.result ?? '')} · ${fmtT(c.ts)}</span>${c.source === 'demo' ? '<span class="tag">SIM</span> ' : ''}<span class="a">${esc(c.author)}</span>
+  box.innerHTML = chat.slice(-200).map((c) => `<div class="it"><span class="r">${esc(c.result ?? '')} · ${fmtT(c.ts)}</span>${c.source === 'demo' ? '<span class="tag">SIM</span> ' : `<span class="tag yt" style="background:${PCOL[c.source]}">${PLBL[c.source]}</span> `}<span class="a">${esc(c.author)}</span>
     ${c.amountText ? `<span class="sc">${esc(c.amountText)}</span>` : ''} ${c.kind !== 'text' ? `<span class="tag vip">${c.kind}</span>` : ''} ${esc(c.text)}</div>`).join('');
   if (atBottom) box.scrollTop = box.scrollHeight;
 }
@@ -221,6 +246,17 @@ function renderStatus() {
     <span>${t('ytViewers')}</span><b>${y.viewers ?? '—'}</b><span>${t('inClub')}</span><b>${members.size}</b>`;
   $('credInfo').innerHTML = `<span>${t('apiKey')}</span><b>${y.hasKey ? '✅ ' + t('set') : '— ' + t('notSet')}</b><span>${t('oauth')}</span><b>${y.hasOAuth ? '✅ ' + t('set') : '— ' + t('notSet')}</b>`;
   $('scQueue').textContent = String(status.queueLength);
+  for (const p of ['twitch', 'kick', 'tiktok'] as const) {
+    const ps = status.platforms[p];
+    const c = ps.state === 'connected' ? 'ok' : ps.state === 'error' ? 'err' : ps.state === 'disconnected' ? '' : 'warn';
+    $(`pls_${p}`).className = `pill ${c}`;
+    $(`pls_${p}`).textContent = ps.configured ? ps.state : t('notConfigured');
+    $(`pld_${p}`).textContent = `${ps.channel ? '#' + ps.channel + ' · ' : ''}${ps.detail}${ps.retryInMs ? ` (${Math.round(ps.retryInMs / 1000)}s)` : ''} · ${ps.messages}`;
+  }
+  const tw = status.platforms.twitch;
+  $('plAcc').textContent = tw.account ? `${t('account')}: ${tw.account}` : '';
+  $('plCode').innerHTML = tw.auth ? `${t('enterCode')} <b style="font-size:20px;letter-spacing:.15em">${esc(tw.auth.userCode)}</b> → <a href="${esc(tw.auth.verificationUri)}" target="_blank" rel="noopener" style="color:var(--acc2)">${esc(tw.auth.verificationUri)}</a>` : '';
+  $('plKick').textContent = `${t('webhookPort')}: ${status.platforms.kick.webhookPort ?? 3001} → Webhook URL: https://<tunnel>/webhooks/kick`;
   const st = status.stats;
   $('perf').innerHTML = st ? `<span>FPS</span><b>${st.fps} (${st.frameMs} ms)</b><span>Draw calls</span><b>${st.drawCalls}</b><span>Triangles</span><b>${st.triangles.toLocaleString()}</b>
     <span>${t('inClub')}</span><b>${st.characters} (${st.visible} visible)</b><span>Render</span><b>${st.width}×${st.height} (×${st.renderScale})</b><span>JS heap</span><b>${st.heapMB ? st.heapMB + ' MB' : 'n/a'}</b>

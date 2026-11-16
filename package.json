@@ -15,7 +15,8 @@
     "test": "vitest run",
     "smoke": "node tools/smoke.mjs",
     "benchmark": "node tools/benchmark.mjs",
-    "assets": "python3 tools/build_characters.py"
+    "assets": "python3 tools/build_characters.py",
+    "enable-tiktok": "npm install --no-save tiktok-live-connector@2.5.0"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.14.7",

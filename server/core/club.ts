@@ -96,9 +96,9 @@ export class ClubState {
   setMode(mode: PublicState['mode']) {
     if (mode === this.mode) return;
     // Real and demo audiences never mix: switching mode clears the other kind.
-    const drop: Source = mode === 'live' ? 'demo' : 'youtube';
-    if (mode !== 'idle') for (const m of [...this.members.values()]) if (m.source === drop) this.remove(m.id, 'mode');
-    if (mode !== 'idle') this.queue = this.queue.filter((e) => e.source !== drop);
+    const drop = (s: Source) => (mode === 'live' ? s === 'demo' : s !== 'demo');
+    if (mode !== 'idle') for (const m of [...this.members.values()]) if (drop(m.source)) this.remove(m.id, 'mode');
+    if (mode !== 'idle') this.queue = this.queue.filter((e) => !drop(e.source));
     this.mode = mode;
     this.send({ t: 'mode', mode }, 'all');
   }
@@ -114,8 +114,8 @@ export class ClubState {
   handleChat(ev: ChatEvent, now = Date.now()): string {
     // strict separation of real and simulated traffic
     if (ev.source === 'demo' && this.mode !== 'demo') return 'rejected:demo-off';
-    if (ev.source === 'youtube' && this.mode !== 'live') return 'rejected:not-live';
-    if (ev.source === 'youtube' && !this.db.markProcessed(ev.id, now)) return 'duplicate';
+    if (ev.source !== 'demo' && this.mode !== 'live') return 'rejected:not-live';
+    if (ev.source !== 'demo' && !this.db.markProcessed(ev.id, now)) return 'duplicate';
 
     const name = this.mod.cleanName(ev.author.name, ev.author.id);
     let result = 'chat';
@@ -280,12 +280,15 @@ export class ClubState {
   // ------------------------------------------------------------------ paid / membership events (cosmetic only)
   private handleSupport(ev: ChatEvent, name: string, now: number): string {
     const sc = this.settings.superchat;
-    this.supporters.add(ev.author.id);
-    const m = this.members.get(ev.author.id);
-    if (m && !m.vip) { m.vip = true; this.persist(m, now); this.sendUpdate(m); }
+    const tier = Math.max(0, Math.min(11, ev.tier ?? (ev.kind === 'superchat' || ev.kind === 'sticker' ? 1 : 3)));
+    if (tier < 1) return 'support:below-min';           // tiny gifts (e.g. single TikTok roses): logged, no effect
+    if (this.settings.supporterVip) {
+      this.supporters.add(ev.author.id);
+      const m = this.members.get(ev.author.id);
+      if (m && !m.vip) { m.vip = true; this.persist(m, now); this.sendUpdate(m); }
+    }
     if (!sc.enabled) return 'support:effects-off';
     if (this.queue.length >= MAX_QUEUE) return 'support:queue-full';
-    const tier = Math.max(1, Math.min(11, ev.tier ?? (ev.kind === 'superchat' || ev.kind === 'sticker' ? 1 : 3)));
     const effects = SC_EFFECTS.filter((e) => sc.effects[e].on && tier >= sc.effects[e].minTier);
     const effect: SupportEffect = {
       uid: `fx${++this.uidCounter}-${now}`,
@@ -384,7 +387,7 @@ export class ClubState {
     // auto-leave for viewers that have been silent for a long time
     if (this.idleMs > 0) {
       for (const m of this.members.values()) {
-        if (m.source === 'youtube' && now - (this.lastSeen.get(m.id) ?? m.joinedAt) > this.idleMs) this.remove(m.id, 'idle');
+        if (m.source !== 'demo' && now - (this.lastSeen.get(m.id) ?? m.joinedAt) > this.idleMs) this.remove(m.id, 'idle');
       }
     }
   }
@@ -415,10 +418,18 @@ export class ClubState {
     return EVENTS[(i + 1) % EVENTS.length];
   }
 
+  /** Profile pictures that arrive after the join (Twitch). */
+  setAvatar(id: string, url: string) {
+    const m = this.members.get(id);
+    if (!m || m.avatar === url) return;
+    m.avatar = url;
+    this.sendUpdate(m);
+  }
+
   private sendUpdate(m: Member) { this.send({ t: 'update', member: m }, 'all'); }
 
   private persist(m: Member, now: number) {
-    if (m.source !== 'youtube') return;   // simulated users are never stored
+    if (m.source === 'demo') return;   // simulated users are never stored
     this.db.saveMember({ id: m.id, name: m.name, outfit: m.outfit, color: m.color, vip: m.vip ? 1 : 0 }, now);
   }
 }

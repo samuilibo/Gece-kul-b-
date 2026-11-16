@@ -65,6 +65,50 @@ open the printed link, approve **read-only** access and paste the printed `YOUTU
 > be exercised against a real YouTube stream during development. If it fails on your account the server logs a
 > warning and switches to polling by itself.
 
+## 3b. Twitch, Kick and TikTok
+
+Every platform can run at the same time as YouTube; all viewers share one club. Identities stay separate
+(`tw:`, `kick:`, `tt:` prefixes), each avatar carries a small platform colour dot, and banners name the platform.
+All commands work the same on every platform.
+
+| | Twitch | Kick | TikTok |
+| --- | --- | --- | --- |
+| API | **official** EventSub WebSocket | **official** Kick Public API (webhooks) | **unofficial** community library |
+| Needs | `TWITCH_CLIENT_ID` + login in panel | `KICK_CLIENT_ID/SECRET` + a tunnel | `npm run enable-tiktok` + opt-in tick box (+ optional `TIKTOK_SIGN_API_KEY`) |
+| Paid events | Bits, subs, resubs, gift subs | KICKs, subs, renewals, gift subs | gifts (streaks counted once) |
+
+**Twitch.** Create an app at dev.twitch.tv (Client Type *Public*, redirect `http://localhost`), put its id into
+`TWITCH_CLIENT_ID`. Panel → *Other platforms* → **Log in with Twitch** shows a code; open the link (works on a
+phone), enter the code, approve read-chat access. Enter a channel (empty = your own) and press **Connect**. The
+token is kept in the local SQLite database; it refreshes automatically. No public URL needed; reconnects follow
+Twitch's `session_reconnect` without losing events.
+
+**Kick.** Kick only delivers events to a public HTTPS webhook. The server opens a separate webhook-only listener
+on `KICK_WEBHOOK_PORT` (default 3001) — the admin panel and `/live` are never exposed through it. Example with
+Cloudflare Tunnel: `cloudflared tunnel --url http://localhost:3001`, then in kick.com → Settings → Developer → your
+app: enable webhooks and set **Webhook URL** to `https://<generated-name>.trycloudflare.com/webhooks/kick`
+(a quick tunnel's name changes each time it starts; a named tunnel keeps it). Put the app's client id/secret in
+`.env`, enter your channel name in the panel and press **Connect**. The panel shows *waiting* until the first webhook
+arrives. Every webhook is verified with Kick's RSA signature; unsigned or forged requests are rejected.
+
+**TikTok.** TikTok has **no official API for LIVE chat**. The connector uses the community library
+`tiktok-live-connector`, which relies on the third-party Euler Stream signing service. It is reverse engineered, can
+break or be rate-limited at any time, and may conflict with TikTok's terms of service. It stays off until you tick
+*“I understand the risks…”* in the panel. No TikTok login or cookies are used. Chat history from before the connection
+is not replayed.
+The library is **AGPL-3.0** licensed and therefore not bundled: enable it once with `npm run enable-tiktok`
+(re-run after `npm ci`/`setup.bat`, since it is installed with `--no-save`). See ASSET_LICENSES.md.
+
+**Paid-event tiers.** To compare platforms, amounts are converted (approximately, only to choose the effect tier)
+to YouTube's tier table: 100 Bits ≈ $1, Twitch Tier 1/2/3 sub ≈ $5/$10/$25, 1 KICK ≈ $0.01, Kick sub ≈ $5,
+1 TikTok coin ≈ $0.013. Below about $1 (for example a single TikTok rose) nothing happens on stream and the gift is only
+logged, so small gifts cannot spam effects. The on-stream banner always shows the original unit (“500 Bits”,
+“3× Gift Sub”, “Rose ×5 (5 coins)”). Panel → Super Chat → *Supporters get VIP automatically* can be switched off.
+
+> These three connectors are implemented from the platforms' documentation and covered by tests with mocked
+> servers (including Twitch's EventSub WebSocket and Kick's signature check), but they could not be tried against the
+> real services from the development environment. Check the panel's status and logs on your first stream.
+
 ## 4. Chat commands
 
 | Turkish | English | Effect |

@@ -30,6 +30,15 @@
 **FPS iddiası yok.** SwiftShader (CPU) ile ölçülen 1–15 FPS hedef bilgisayar hakkında bilgi vermez.
 Hedef PC'de: `/live` OBS'de açıkken panel → *Benchmark çalıştır* veya `npm run benchmark -- 100 high`.
 
+## Ek: Twitch, Kick, TikTok (çok platform)
+
+* Twitch: resmi EventSub WebSocket, cihaz kodu ile giriş, Bits/abonelik/hediye abonelik; `session_reconnect` desteği.
+* Kick: resmi Public API; uygulama token'ı ile abonelik, ayrı webhook portu, RSA imza doğrulaması.
+* TikTok: resmi API olmadığı için gayri resmi `tiktok-live-connector`; panelden açıkça onaylanmadan çalışmaz.
+* Tüm platformlar aynı anda çalışabilir; kimlikler ayrı, ~1 $ altındaki hediyeler efekt üretmez.
+* Doğrulama: 10 yeni test (sahte Twitch WebSocket sunucusu, Kick imza/webhook, TikTok seri sayımı, çok platformlu kulüp).
+  Gerçek Twitch/Kick/TikTok sunucularına bu ortamdan erişilemedi → 🟡.
+
 ## Bilinen sınırlamalar / yapılacaklar
 
 * Karakter kıyafetleri ve saçları prosedürel (CC0 taban mesh'in yardımcı geometrisinden); MakeHuman'ın

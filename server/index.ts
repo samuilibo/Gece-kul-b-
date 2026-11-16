@@ -8,6 +8,10 @@ import type { AdminMsg, AdminStatus, LiveMsg, LiveStats, LogItem, MusicInfo, Ser
 import { ClubState } from './core/club.ts';
 import { DemoDriver } from './core/demo.ts';
 import { Db } from './db.ts';
+import { AVATAR_HOSTS, type PlatformDeps } from './platforms/common.ts';
+import { KickConnector } from './platforms/kick.ts';
+import { TikTokConnector } from './platforms/tiktok.ts';
+import { TwitchConnector } from './platforms/twitch.ts';
 import { YouTubeConnector } from './youtube/connector.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -54,12 +58,33 @@ const yt = new YouTubeConnector({
   loadToken: (chatId) => db.getJson<string | undefined>(`yt:token:${chatId}`, undefined),
   saveToken: (chatId, token) => db.setJson(`yt:token:${chatId}`, token),
   onEvent: (ev) => club.handleChat(ev),
-  onStatus: () => {
-    if ((yt.status.state === 'ended' || yt.status.state === 'error' || yt.status.state === 'chat_disabled') && club.mode === 'live') club.setMode('idle');
-    pushStatus();
-  },
+  onStatus: () => { refreshMode(); pushStatus(); },
   log: (level, msg) => log(level, 'youtube', msg),
 });
+
+// ---- Twitch / Kick / TikTok (credentials from .env; Twitch login token kept in SQLite)
+const platformDeps = (scope: string): PlatformDeps => ({
+  onEvent: (ev) => club.handleChat(ev),
+  onStatus: () => { refreshMode(); pushStatus(); },
+  log: (level, msg) => log(level, scope, msg.replace(/^\w+: /, '')),
+  kvGet: (k, f) => db.getJson(k, f),
+  kvSet: (k, v) => db.setJson(k, v),
+  setAvatar: (id, url) => club.setAvatar(id, url),
+});
+const twitch = new TwitchConnector(process.env.TWITCH_CLIENT_ID ?? '', platformDeps('twitch'));
+const kick = new KickConnector({
+  clientId: process.env.KICK_CLIENT_ID ?? '', clientSecret: process.env.KICK_CLIENT_SECRET ?? '',
+  webhookPort: Number(process.env.KICK_WEBHOOK_PORT ?? 3001), webhookHost: process.env.KICK_WEBHOOK_HOST ?? '127.0.0.1',
+}, platformDeps('kick'));
+const tiktok = new TikTokConnector(process.env.TIKTOK_SIGN_API_KEY ?? '', platformDeps('tiktok'));
+const anyLive = () => yt.connected || twitch.active || kick.active || tiktok.active;
+
+/** live while at least one real platform is connected; demo only when nothing real is. */
+function refreshMode() {
+  const want = anyLive() ? 'live' : demo.running ? 'demo' : 'idle';
+  if (club.mode !== want) club.setMode(want);
+}
+function disconnectAll() { yt.disconnect(); twitch.disconnect(); kick.disconnect(); tiktok.disconnect(); }
 
 let liveStats: LiveStats | null = null;
 let musicInfo: MusicInfo | null = null;
@@ -75,6 +100,7 @@ function status(): AdminStatus {
   const y = { ...yt.status };
   if (club.mode === 'demo' && simDown) { y.state = 'reconnecting'; y.detail = 'SIMULATION'; }
   return {
+    platforms: { twitch: twitch.status, kick: kick.status, tiktok: tiktok.status },
     youtube: y, mode: club.mode, liveClients: lives.size, stats: lives.size ? liveStats : null, music: lives.size ? musicInfo : null,
     playlist, queueLength: club.queueLength(), blocked: db.blocked(), uptime: Date.now() - started,
   };
@@ -88,11 +114,31 @@ async function onAdmin(msg: AdminMsg) {
       if (demo.running) demo.stop();
       club.setMode('live');
       const ok = await yt.connect(msg.url);
-      if (!ok) club.setMode('idle');
-      else log('info', 'youtube', `connected to ${yt.status.videoId} "${yt.status.title}"`);
+      refreshMode();
+      if (ok) log('info', 'youtube', `connected to ${yt.status.videoId} "${yt.status.title}"`);
       break;
     }
-    case 'disconnect': yt.disconnect(); club.setMode('idle'); break;
+    case 'disconnect': yt.disconnect(); refreshMode(); break;
+    case 'platform': {
+      const ch = (msg.channel ?? '').trim().slice(0, 100);
+      const p = msg.platform;
+      if (msg.cmd === 'login' && p === 'twitch') { void twitch.login(); break; }
+      if (msg.cmd === 'logout' && p === 'twitch') { twitch.logout(); refreshMode(); break; }
+      if (msg.cmd === 'disconnect') { (p === 'twitch' ? twitch : p === 'kick' ? kick : tiktok).disconnect(); refreshMode(); break; }
+      if (msg.cmd === 'connect') {
+        const pl = club.settings.platforms;
+        if (p === 'tiktok') club.patchSettings({ platforms: { ...pl, tiktok: { ...pl.tiktok, username: ch || pl.tiktok.username } } });
+        else club.patchSettings({ platforms: { ...pl, [p]: { channel: ch || pl[p].channel } } });
+        if (demo.running) demo.stop();
+        club.setMode('live');
+        const s = club.settings.platforms;
+        if (p === 'twitch') await twitch.connect(s.twitch.channel);
+        else if (p === 'kick') await kick.connect(s.kick.channel);
+        else await tiktok.connect(s.tiktok.username, s.tiktok.acceptUnofficial);
+        refreshMode();
+      }
+      break;
+    }
     case 'settings': club.patchSettings(msg.patch); break;
     case 'kick': club.remove(msg.id, 'kicked'); break;
     case 'block': club.block(msg.id); break;
@@ -100,7 +146,7 @@ async function onAdmin(msg: AdminMsg) {
     case 'grantVip': club.grantVip(msg.id, msg.on); break;
     case 'demo':
       // Simulated viewers are only ever created while no real stream is connected.
-      if (yt.connected || club.mode === 'live') { log('warn', 'demo', 'demo refused: a real stream is connected'); break; }
+      if (anyLive() || club.mode === 'live') { log('warn', 'demo', 'demo refused: a real stream is connected'); break; }
       if (msg.cmd === 'start') demo.start(msg.count ?? 10);
       else if (msg.cmd === 'stop') demo.stop();
       else if (!demo.running) break;
@@ -122,7 +168,7 @@ async function onAdmin(msg: AdminMsg) {
     case 'test': broadcast({ t: 'test', what: msg.what, arg: msg.arg }, 'all'); break;
     case 'emergency':
       club.setEmergency(msg.on);
-      if (msg.on) { yt.disconnect(); if (demo.running) demo.stop(); club.setMode('idle'); }
+      if (msg.on) { disconnectAll(); if (demo.running) demo.stop(); club.setMode('idle'); }
       break;
     case 'clearLogs': db.clearLogs(); break;
   }
@@ -183,7 +229,7 @@ async function avatar(res: ServerResponse, u: string) {
   let url: URL;
   try { url = new URL(u); } catch { res.writeHead(400).end(); return; }
   // only Google-hosted profile images are proxied (no open proxy)
-  if (url.protocol !== 'https:' || !/(^|\.)(ggpht\.com|googleusercontent\.com)$/.test(url.hostname)) { res.writeHead(403).end(); return; }
+  if (url.protocol !== 'https:' || !AVATAR_HOSTS.test(url.hostname)) { res.writeHead(403).end(); return; }
   let hit = avatarCache.get(u);
   if (!hit) {
     try {
@@ -274,6 +320,6 @@ server.listen(PORT, HOST, () => {
   log('info', 'server', `started on ${HOST}:${PORT}; music dir ${MUSIC_DIR}; api key ${process.env.YOUTUBE_API_KEY ? 'set' : 'not set'}`);
 });
 
-const shutdown = () => { yt.disconnect(); demo.running && demo.stop(); server.close(); db.close(); process.exit(0); };
+const shutdown = () => { disconnectAll(); kick.stop(); demo.running && demo.stop(); server.close(); db.close(); process.exit(0); };
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);

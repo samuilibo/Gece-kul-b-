@@ -45,3 +45,10 @@ call that API. Replace it with Google's official copy if one is published under 
 
 three (MIT), ws (MIT), dotenv (BSD-2-Clause), @grpc/grpc-js (Apache-2.0), @grpc/proto-loader (Apache-2.0),
 vite (MIT), typescript (Apache-2.0), tsx (MIT), vitest (MIT). See `node_modules/*/LICENSE`.
+
+### Optional add-on (not included)
+
+`tiktok-live-connector` (**AGPL-3.0-only**, unofficial TikTok LIVE client that calls the third-party Euler Stream
+signing service) is **not** a dependency and is not distributed with this project. It is installed only if you run
+`npm run enable-tiktok`. If you do, and you distribute or offer the combined program to others over a network, the
+AGPL's conditions for that library apply to you.

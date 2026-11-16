@@ -9,7 +9,8 @@ const IDENT = new THREE.Matrix4();
 const BOUNDS = new THREE.Sphere(new THREE.Vector3(0, 0.95, 0), 1.7);
 const mod = (x: number, m: number) => ((x % m) + m) % m;
 
-export interface TagInfo { name: string; demo: boolean; vip: boolean; avatar?: string }
+export interface TagInfo { name: string; demo: boolean; vip: boolean; avatar?: string; platform?: string }
+const PLATFORM_COLOR: Record<string, string> = { twitch: '#9146ff', kick: '#53fc18', tiktok: '#ff2c55' };
 
 /** One rigged, clothed human: a single SkinnedMesh (one draw call) + skeleton + mixer + name tag. */
 export class Character {
@@ -134,7 +135,7 @@ export class Character {
   // ------------------------------------------------------------------ name tag
   setTag(info: TagInfo | null) {
     if (!info) { if (this.tag) this.tag.visible = false; return; }
-    const same = this.tagInfo && this.tagInfo.name === info.name && this.tagInfo.vip === info.vip && this.tagInfo.avatar === info.avatar;
+    const same = this.tagInfo && this.tagInfo.name === info.name && this.tagInfo.vip === info.vip && this.tagInfo.avatar === info.avatar && this.tagInfo.platform === info.platform;
     if (!this.tag) {
       const c = document.createElement('canvas');
       c.width = 384; c.height = 96;
@@ -168,10 +169,11 @@ export class Character {
     const bw = badge ? g.measureText(badge).width + 20 : 0;
     g.font = '700 40px "Segoe UI", Arial, sans-serif';
     let name = info.name;
-    const maxW = c.width - 40 - (avatar ? 76 : 0) - (bw ? bw + 10 : 0);
+    const maxW = c.width - 40 - (avatar ? 76 : 0) - (bw ? bw + 10 : 0) - (info.platform && PLATFORM_COLOR[info.platform] ? 22 : 0);
     while (g.measureText(name).width > maxW && name.length > 3) name = name.slice(0, -2) + '…';
     const tw = g.measureText(name).width;
-    const w = tw + 36 + (avatar ? 76 : 0) + (bw ? bw + 10 : 0), x0 = (c.width - w) / 2;
+    const dot = info.platform && PLATFORM_COLOR[info.platform] ? 22 : 0;   // small platform marker for multi-platform streams
+    const w = tw + 36 + dot + (avatar ? 76 : 0) + (bw ? bw + 10 : 0), x0 = (c.width - w) / 2;
     g.fillStyle = 'rgba(8,6,18,0.62)';
     g.beginPath(); g.roundRect(x0, 12, w, 72, 36); g.fill();
     let x = x0 + 18;
@@ -181,6 +183,7 @@ export class Character {
       x = x0 + 80;
     }
     g.fillStyle = '#ffffff'; g.textBaseline = 'middle'; g.textAlign = 'left';
+    if (dot) { g.fillStyle = PLATFORM_COLOR[info.platform!]; g.beginPath(); g.arc(x + 8, 48, 8, 0, Math.PI * 2); g.fill(); x += dot; g.fillStyle = '#ffffff'; }
     g.fillText(name, x, 50);
     if (badge) {
       const bx = x + tw + 10;

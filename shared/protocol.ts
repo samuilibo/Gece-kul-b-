@@ -1,6 +1,9 @@
 // Types shared by the server, the live view and the admin panel.
 
-export type Source = 'youtube' | 'demo';
+export type Source = 'youtube' | 'twitch' | 'kick' | 'tiktok' | 'demo';
+export const PLATFORMS = ['twitch', 'kick', 'tiktok'] as const;
+export type Platform = (typeof PLATFORMS)[number];
+export const SOURCE_LABEL: Record<Source, string> = { youtube: 'YouTube', twitch: 'Twitch', kick: 'Kick', tiktok: 'TikTok', demo: 'Demo' };
 export type Zone = 'floor' | 'vip' | 'stage' | 'lounge';
 export type Quality = 'low' | 'medium' | 'high' | 'ultra';
 
@@ -101,6 +104,17 @@ export interface Settings {
   cameraAuto: boolean;
   minPollMs: number;
   welcomeCamera: boolean;
+  supporterVip: boolean;         // supporters (tier >= 1) automatically get VIP access
+  platforms: { twitch: { channel: string }; kick: { channel: string }; tiktok: { username: string; acceptUnofficial: boolean } };
+}
+
+export interface PlatformStatus {
+  state: 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'waiting' | 'ended' | 'error';
+  channel: string; detail: string; messages: number; retryInMs: number;
+  configured: boolean;            // credentials present in .env
+  auth?: { userCode: string; verificationUri: string; expiresAt: number } | null;   // Twitch device login in progress
+  account?: string;               // logged-in account (Twitch)
+  webhookPort?: number;           // Kick webhook listener port
 }
 
 export interface PublicState {
@@ -166,6 +180,7 @@ export interface AdminStatus {
   queueLength: number;
   blocked: { id: string; name: string }[];
   uptime: number;
+  platforms: Record<Platform, PlatformStatus>;
 }
 
 // ---- live -> server
@@ -191,7 +206,8 @@ export type AdminMsg =
   | { t: 'test'; what: string; arg?: string }
   | { t: 'emergency'; on: boolean }
   | { t: 'grantVip'; id: string; on: boolean }
-  | { t: 'clearLogs' };
+  | { t: 'clearLogs' }
+  | { t: 'platform'; platform: Platform; cmd: 'connect' | 'disconnect' | 'login' | 'logout'; channel?: string };
 
 export const DEFAULT_COOLDOWNS: Record<CommandName, number> = {
   join: 3, dance: 4, shuffle: 4, breakdance: 6, robot: 4, jump: 3, wave: 3, sit: 5, outfit: 8, color: 5,
@@ -222,5 +238,7 @@ export function defaultSettings(): Settings {
     cameraAuto: true,
     minPollMs: 3000,
     welcomeCamera: true,
+    supporterVip: true,
+    platforms: { twitch: { channel: '' }, kick: { channel: '' }, tiktok: { username: '', acceptUnofficial: false } },
   };
 }

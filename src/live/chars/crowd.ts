@@ -128,7 +128,7 @@ export class Crowd {
   }
 
   private refreshTag(d: Dancer) {
-    d.ch.setTag(this.showNames ? { name: d.m.name, demo: d.m.source === 'demo', vip: d.m.vip, avatar: this.showAvatars ? d.m.avatar : undefined } : null);
+    d.ch.setTag(this.showNames ? { name: d.m.name, demo: d.m.source === 'demo', vip: d.m.vip, avatar: this.showAvatars ? d.m.avatar : undefined, platform: d.m.source } : null);
   }
 
   setTagOptions(names: boolean, avatars: boolean) {

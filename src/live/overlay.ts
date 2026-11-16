@@ -1,4 +1,4 @@
-import type { ClubEvent, PublicState, SupportEffect, VoteState } from '../../shared/protocol.ts';
+import { SOURCE_LABEL, type ClubEvent, type PublicState, type SupportEffect, type VoteState } from '../../shared/protocol.ts';
 
 type Lang = 'tr' | 'en';
 const T = {
@@ -110,6 +110,7 @@ export class Overlay {
     const head = el('div', 'bh', this.banner);
     el('span', '', head, e.kind === 'member' ? t.member : e.kind === 'gift' ? t.gift : `${t.thanks}!`);
     if (e.source === 'demo') el('em', '', head, t.sim);
+    else if (e.source !== 'youtube') el('em', `pl ${e.source}`, head, SOURCE_LABEL[e.source]);
     el('div', 'bn', this.banner, e.name);
     if (e.amountText) el('div', 'ba', this.banner, e.amountText);
     if (e.comment) el('div', 'bc', this.banner, e.comment);
