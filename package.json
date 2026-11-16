@@ -8,9 +8,9 @@
     "node": ">=22.13"
   },
   "scripts": {
-    "dev": "tsx server/index.ts --dev",
+    "dev": "node --import tsx server/index.ts --dev",
     "build": "tsc --noEmit && vite build",
-    "start": "tsx server/index.ts",
+    "start": "node --import tsx server/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "smoke": "node tools/smoke.mjs",

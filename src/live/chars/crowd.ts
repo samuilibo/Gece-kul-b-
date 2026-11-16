@@ -152,7 +152,7 @@ export class Crowd {
       }
     }
     d.slot = slot;
-    if (slot) this.route(d, slot.seat ? { x: slot.x + Math.sin(slot.yaw) * 0.72, z: slot.z + Math.cos(slot.yaw) * 0.72 } : slot);
+    if (slot) this.route(d, slot.seat ? Nav.approach(slot) : slot);
   }
 
   private route(d: Dancer, to: P2) {
@@ -287,7 +287,11 @@ export class Crowd {
     this.sorted.length = 0;
     for (const d of this.dancers.values()) {
       // ---- locomotion
-      if (d.state === 'walk' || d.state === 'leave') this.walk(d, dt);
+      if (d.state === 'walk' || d.state === 'leave') {
+        // sub-steps keep waypoint following and avoidance stable when a frame takes long
+        for (let r = dt; r > 1e-4 && (d.state === 'walk' || d.state === 'leave') && this.dancers.has(d.m.id); r -= 0.05) this.walk(d, Math.min(r, 0.05));
+        if (!this.dancers.has(d.m.id)) continue;
+      }
       else if (d.state === 'settle') {
         d.settleT = Math.min(1, d.settleT + dt / 0.7);
         const s = d.slot!, k = d.settleT * d.settleT * (3 - 2 * d.settleT);

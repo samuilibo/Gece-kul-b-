@@ -17,6 +17,7 @@ export class DemoDriver {
   private bots: { id: string; name: string }[] = [];
   private timer: NodeJS.Timeout | null = null;
   private seq = 0;
+  private session = 0;
   private pausedUntil = 0;
   rate = 1.2;                       // chat messages per second
   autoSuperchat = true;
@@ -29,6 +30,7 @@ export class DemoDriver {
 
   start(count: number) {
     this.club.setMode('demo');
+    if (!this.bots.length) this.session++;
     this.add(count);
     if (!this.timer) this.timer = setInterval(() => this.step(), 250);
   }
@@ -46,12 +48,14 @@ export class DemoDriver {
     const base = this.bots.length;
     for (let i = 0; i < count; i++) {
       const n = base + i;
-      const bot = { id: `demo:${n}`, name: `${FIRST[n % FIRST.length]}${LAST[(n * 7 + 3) % LAST.length]}${n >= FIRST.length ? Math.floor(n / FIRST.length) : ''}` };
+      const bot = { id: `demo:${this.session}-${n}`, name: `${FIRST[n % FIRST.length]}${LAST[(n * 7 + 3) % LAST.length]}${n >= FIRST.length ? Math.floor(n / FIRST.length) : ''}` };
       this.bots.push(bot);
       // staggered arrivals so the entrance animation is visible
       setTimeout(() => this.say(bot, n % 2 ? '!join' : '!katıl'), Math.min(i * (count > 60 ? 60 : 350), 30000));
     }
   }
+
+  sayAsFirst(text: string) { return this.bots[0] ? this.say(this.bots[0], text) : 'no-bots'; }
 
   say(bot: { id: string; name: string }, text: string, extra: Partial<ChatEvent> = {}) {
     if (Date.now() < this.pausedUntil) return 'paused';

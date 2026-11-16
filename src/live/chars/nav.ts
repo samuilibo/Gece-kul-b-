@@ -1,4 +1,4 @@
-import { COLUMNS, DJ, FLOOR, LOUNGE, LOUNGE_SEATS, ROOM, SOFAS, STAGE, STAGE_SLOTS, TABLES, VIP, VIP_SEATS, groundY, type Seat } from '../layout.ts';
+import { COLUMNS, DJ, FLOOR, LOUNGE, LOUNGE_SEATS, ROOM, SOFAS, SPAWN, STAGE, STAGE_SLOTS, TABLES, VIP, VIP_SEATS, groundY, type Seat } from '../layout.ts';
 import { rng } from '../engine.ts';
 import type { Zone } from '../../../shared/protocol.ts';
 
@@ -17,7 +17,7 @@ export class Nav {
   occ = new Uint8Array(NX * NZ);
   slots: Record<Zone, Slot[]> = { floor: [], vip: [], stage: [], lounge: [] };
   seats: Record<'vip' | 'lounge', Slot[]> = { vip: [], lounge: [] };
-  private g = new Float32Array(NX * NZ);
+  private g = new Float64Array(NX * NZ);
   private from = new Int32Array(NX * NZ);
   private mark = new Uint32Array(NX * NZ);
   private stamp = 0;
@@ -51,7 +51,16 @@ export class Nav {
     }
     rect(VIP.x0, VIP.x0 + 0.45, VIP.z0, VIP.z1);                   // VIP rope
     this.buildSlots();
+    // every slot / seat must be reachable from the entrance; anything boxed in by furniture is dropped
+    const spawn = { x: SPAWN.x, z: SPAWN.z };
+    const ok = (s: Slot) => !!this.findPath(spawn, s.seat ? Nav.approach(s) : s);
+    for (const z of Object.keys(this.slots) as Zone[]) this.slots[z] = this.slots[z].filter(ok);
+    this.seats.vip = this.seats.vip.filter(ok);
+    this.seats.lounge = this.seats.lounge.filter(ok);
   }
+
+  /** Standing point in front of a seat. */
+  static approach(s: Seat): P2 { return { x: s.x + Math.sin(s.yaw) * 0.72, z: s.z + Math.cos(s.yaw) * 0.72 }; }
 
   ix(x: number) { return Math.floor((x - OX) / CELL); }
   iz(z: number) { return Math.floor((z - OZ) / CELL); }
@@ -167,9 +176,11 @@ export class Nav {
     g[start] = 0; mark[start] = stamp; fromArr[start] = -1;
     push(h(start), start);
     let found = false, guard = 0;
-    while (heapF.length && guard++ < 40000) {
+    while (heapF.length && guard++ < 200000) {
+      const fTop = heapF[0];
       const cur = pop();
       if (cur === goal) { found = true; break; }
+      if (fTop > g[cur] + h(cur) + 1e-4) continue;          // stale heap entry
       const cx = cur % NX, cz = Math.floor(cur / NX);
       for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
         if (!dx && !dz) continue;

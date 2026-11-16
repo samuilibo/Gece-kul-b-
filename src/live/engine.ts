@@ -59,6 +59,7 @@ export class Engine {
   stats: LiveStats;
   gpu = 'unknown';
   private frames = 0;
+  private lastT = performance.now();
   private acc = 0;
   private worst = 0;
   private width = 1;
@@ -131,9 +132,11 @@ export class Engine {
   render(dt: number) {
     this.renderer.info.reset();
     this.composer.render(dt);
+    const nowT = performance.now(), real = (nowT - this.lastT) / 1000;   // unclamped wall-clock time
+    this.lastT = nowT;
     this.frames++;
-    this.acc += dt;
-    this.worst = Math.max(this.worst, dt);
+    this.acc += real;
+    this.worst = Math.max(this.worst, real);
     if (this.acc >= 1) {
       const fps = this.frames / this.acc;
       const info = this.renderer.info;

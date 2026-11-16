@@ -141,6 +141,7 @@ function setEmergency(on: boolean) {
 
 function runTest(what: string, arg?: string) {
   const c = crowd.center(new THREE.Vector3());
+  if (what === 'bench') { void benchmark(); return; }
   if (what === 'lights') club.lightTest(now);
   else if (what === 'lightshow') club.lightShow(8, now);
   else if (what === 'confetti') effects.confetti(new THREE.Vector3(c.x, 4, c.z), 400);
@@ -159,6 +160,43 @@ function runTest(what: string, arg?: string) {
     for (const d of crowd.dancers.values()) crowd.action(d.m.id, 'dance', 'step_touch', f.beats);
     overlay.showNotice(`SYNC TEST · ${f.bpm.toFixed(1)} BPM (${audio.info().builtin ? 'synth clock' : `detected ${Math.round(audio.bpmDetected)}`})`, 9000);
   }
+}
+
+/** Measured benchmark: fixed resolution, five camera shots x 6 s, reports avg FPS and 1% / 5% lows. */
+let benchRunning = false;
+const frameTimes: number[] = [];
+async function benchmark() {
+  if (benchRunning) return;
+  benchRunning = true;
+  const dyn = engine.dynamicRes;
+  engine.dynamicRes = false;
+  engine.scale = engine.profile.maxScale; engine.resize();
+  const shots = ['wide', 'orbit', 'crowd', 'top', 'balcony'];
+  const per: Record<string, unknown> = {};
+  const all: number[] = [];
+  for (const s of shots) {
+    director.setMode(s);
+    await new Promise((r) => setTimeout(r, 1500));
+    frameTimes.length = 0;
+    await new Promise((r) => setTimeout(r, 6000));
+    const ft = [...frameTimes].sort((x, y) => x - y);
+    all.push(...ft);
+    const avg = ft.reduce((x, y) => x + y, 0) / Math.max(1, ft.length);
+    per[s] = { fps: +(1 / avg).toFixed(1), p95ms: +(ft[Math.floor(ft.length * 0.95)] * 1000).toFixed(1) };
+  }
+  director.setMode('auto');
+  all.sort((x, y) => x - y);
+  const avg = all.reduce((x, y) => x + y, 0) / Math.max(1, all.length);
+  const result = {
+    quality: engine.quality, characters: crowd.count, resolution: `${engine.stats.width}x${engine.stats.height}`, gpu: engine.gpu,
+    avgFps: +(1 / avg).toFixed(1), low5Fps: +(1 / all[Math.floor(all.length * 0.95)]).toFixed(1), low1Fps: +(1 / all[Math.floor(all.length * 0.99)]).toFixed(1),
+    drawCalls: engine.stats.drawCalls, triangles: engine.stats.triangles, shots: per, at: new Date().toISOString(),
+  };
+  send({ t: 'bench', result });
+  overlay.showNotice(`BENCHMARK: ${result.avgFps} FPS avg · 1% low ${result.low1Fps} · ${result.characters} chars · ${result.resolution}`, 12000);
+  engine.dynamicRes = dyn;
+  benchRunning = false;
+  (window as unknown as Record<string, unknown>).__bench = result;
 }
 
 function sendMusic(withList = false) {
@@ -186,8 +224,9 @@ let now = 0, secAcc = 0, frames = 0;
 function frame() {
   requestAnimationFrame(frame);
   clock.update();
-  const dt = Math.min(0.1, clock.getDelta());
+  const raw = clock.getDelta(), dt = Math.min(0.25, raw);
   now += dt;
+  if (benchRunning) frameTimes.push(raw);
   const a = audio.update(dt);
   charGlobals.uTime.value = now;
   charGlobals.uRim.value.copy(club.ambientTint).multiplyScalar(0.55 + 0.35 * a.kick);

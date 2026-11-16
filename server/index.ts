@@ -105,7 +105,7 @@ async function onAdmin(msg: AdminMsg) {
       else if (msg.cmd === 'stop') demo.stop();
       else if (!demo.running) break;
       else if (msg.cmd === 'add') demo.add(msg.count ?? 10);
-      else if (msg.cmd === 'chat') demo.say({ id: 'demo:0', name: 'DenizNeon' }, msg.text ?? '!dance');
+      else if (msg.cmd === 'chat') demo.sayAsFirst(msg.text ?? '!dance');
       else if (msg.cmd === 'superchat') demo.superchat(msg.tier ?? 0);
       else if (msg.cmd === 'disconnectTest') demo.disconnectTest();
       else if (msg.cmd === 'load') {
