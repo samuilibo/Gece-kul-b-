@@ -56,6 +56,7 @@ export class Engine {
   profile: QualityProfile = PROFILES.high;
   quality: Quality = 'high';
   dynamicRes = true;
+  forcedScale = 0;          // ?scale=2 renders at 2× (e.g. 3840×2160 screenshots from a 1920×1080 page)
   scale = 1;
   stats: LiveStats;
   gpu = 'unknown';
@@ -104,12 +105,12 @@ export class Engine {
 
   setQuality(q: Quality, dynamicRes: boolean) {
     this.dynamicRes = dynamicRes;
-    if (q === this.quality && this.composer) { if (!dynamicRes) { this.scale = this.profile.maxScale; this.resize(); } return; }
+    if (q === this.quality && this.composer) { if (!dynamicRes) { this.scale = this.forcedScale || this.profile.maxScale; this.resize(); } return; }
     this.quality = q;
     this.profile = PROFILES[q];
     this.renderer.shadowMap.enabled = this.profile.shadows > 0;
     this.scale = Math.min(this.scale, this.profile.maxScale);
-    if (!dynamicRes) this.scale = this.profile.maxScale;
+    if (!dynamicRes) this.scale = this.forcedScale || this.profile.maxScale;
     this.buildComposer();
     this.resize();
     for (const fn of this.onQuality) fn(this.profile);

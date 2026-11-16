@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Interactive YouTube nightclub simulator (Three.js + Node.js)",
+  "description": "Interactive 3D nightclub for YouTube, Twitch, Kick and TikTok live streams (Three.js + Node.js)",
   "engines": {
     "node": ">=22.13"
   },
@@ -33,5 +33,27 @@
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.0"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/samuilibo/neon-club-live.git"
+  },
+  "homepage": "https://github.com/samuilibo/neon-club-live#readme",
+  "bugs": {
+    "url": "https://github.com/samuilibo/neon-club-live/issues"
+  },
+  "keywords": [
+    "threejs",
+    "webgl",
+    "live-stream",
+    "youtube-live",
+    "twitch",
+    "kick",
+    "tiktok-live",
+    "obs",
+    "nightclub",
+    "interactive-stream",
+    "chat-game"
+  ]
 }

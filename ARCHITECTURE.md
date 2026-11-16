@@ -1,83 +1,84 @@
-# NEON CLUB LIVE — Mimari
+# NEON CLUB LIVE – Architecture
 
-YouTube canlı sohbetiyle sürülen, yerelde çalışan gerçek zamanlı 3D gece kulübü simülasyonu.
+**English** · [Türkçe](ARCHITECTURE.tr.md)
 
-## Genel bakış
+A locally running, real-time 3D nightclub driven by live-stream chats (YouTube, Twitch, Kick, TikTok).
+
+## Overview
 
 ```
-YouTube Live Chat ──► server/youtube (streamList gRPC ► list polling yedeği)
-                         │  ham mesajlar (id, snippet, authorDetails)
-                         ▼
-                 server/core/ChatRouter ── tekilleştirme (mesaj id, SQLite)
-                         │                 moderasyon (spam / küfür / isim filtresi)
-                         │                 komut ayrıştırma (TR + EN), bekleme süreleri
-                         ▼
-                 server/core/ClubState ── yetkili durum: üyeler, oylamalar,
-                         │                 etkinlikler, efekt kuyruğu, ayarlar
-                         ▼  WebSocket (/ws)
-        ┌────────────────┴─────────────────┐
-        ▼                                  ▼
-  /live (yayın görüntüsü)            /admin (yönetim paneli)
-  Three.js sahne + overlay           durum, sohbet akışı, ayarlar
-  yalnızca OKUR, komut gönderemez    yetkili komutlar (admin belirteci)
+YouTube  ── server/youtube   (videos.list → streamList gRPC, fall-back: liveChatMessages.list polling)
+Twitch   ── server/platforms/twitch.ts  (EventSub WebSocket, device-code login)
+Kick     ── server/platforms/kick.ts    (official webhooks on a separate port, RSA signature check)
+TikTok   ── server/platforms/tiktok.ts  (optional, unofficial library, opt-in)
+              │  normalised ChatEvent { id, source, author, kind, text, amountText, tier, usd }
+              ▼
+        server/core/club.ts  (ClubState – the single source of truth)
+              de-duplication (SQLite) · moderation · commands (TR + EN) · cooldowns
+              members · door queue · votes · events · support-effect queue · settings
+              ▼  WebSocket /ws
+   ┌──────────┴────────────┐
+   ▼                       ▼
+ /live (stream output)    /admin (control panel)
+ Three.js scene + HUD     status, chat, settings, demo/tests
+ reports stats only       authenticated with ADMIN_TOKEN
 ```
 
-- **Sunucu yetkilidir.** Kimin kulüpte olduğu, VIP/sahne hakkı, oylamalar, Super Chat efekt
-  kuyruğu ve ayarlar sunucuda tutulur. `/live` istemcisi yalnızca görselleştirir; konum,
-  navigasyon ve animasyon istemcide çözülür (tek yayın istemcisi olduğu için yeterli).
-- **Gizli bilgiler yalnızca sunucuda.** API anahtarı / OAuth bilgileri `.env` içinden okunur,
-  hiçbir WebSocket mesajına veya istemci paketine girmez.
-- **Gerçek / demo ayrımı.** Her olay `source: "youtube" | "demo"` alanı taşır. Demo üreteci
-  yalnızca demo modu açıkken çalışır; gerçek yayın bağlıyken demo olayları reddedilir.
-  Demo karakterleri isimlerinde ve overlay'de `DEMO` rozetiyle işaretlenir.
+* **The server is authoritative.** Who is inside, VIP / stage rights, votes, the door queue, the effect queue and all
+  settings live on the server. `/live` only visualises them; walking, animation and camera work happen in the browser.
+* **Secrets stay on the server.** API keys and OAuth tokens are read from `.env` (Twitch tokens from the local SQLite
+  database) and never sent over the WebSocket or written to logs.
+* **Real vs. demo.** Every event has `source: youtube | twitch | kick | tiktok | demo`. Demo events are accepted only in
+  demo mode and real ones only in live mode; switching mode removes the other kind. Demo avatars carry a DEMO badge.
 
-## Dizin yapısı
+## Directories
 
-| Yol | İçerik |
+| Path | Content |
 | --- | --- |
-| `server/` | Node.js + TypeScript (tsx ile çalışır). HTTP (statik + REST), WebSocket, YouTube, SQLite |
-| `server/youtube/` | URL→videoId, `videos.list`, `liveChatMessages.streamList` (gRPC), `liveChatMessages.list` (polling), backoff, kota yönetimi |
-| `server/core/` | `ChatRouter`, `Moderation`, `Commands`, `ClubState`, `EffectQueue`, `EventManager`, `Demo` |
-| `server/db.ts` | `node:sqlite` — üyeler, engelliler, işlenen mesaj kimlikleri, ayarlar, hata kayıtları |
-| `shared/` | Sunucu ve istemcinin ortak tipleri ve protokolü |
-| `src/live/` | Yayın görüntüsü: motor, kulüp, karakterler, ses, kamera, efektler, overlay |
-| `src/admin/` | Yönetim paneli (çerçevesiz TypeScript, TR/EN) |
-| `tools/` | Karakter üretim hattı (Python), benchmark ve duman testleri |
-| `public/assets/` | Üretilmiş GLB karakterler ve dokular |
-| `music/` | Kullanıcının kendi lisanslı MP3/WAV/OGG dosyaları |
+| `server/index.ts` | HTTP (static files, music, avatar proxy), WebSocket, admin commands, mode handling |
+| `server/core/` | `club.ts` (state, commands, queue, effects), `commands.ts`, `moderation.ts`, `demo.ts` |
+| `server/youtube/` | URL → video id, `videos.list`, `streamList` (gRPC), `list` polling, back-off, quota |
+| `server/platforms/` | Twitch, Kick, TikTok connectors + shared tier conversion |
+| `server/db.ts` | `node:sqlite`: members, blocked users, processed message ids, settings, logs |
+| `shared/` | Protocol types and event definitions shared by server and browser |
+| `src/live/` | Stream output: engine, club, characters, audio, camera, effects, HUD |
+| `src/admin/` | Admin panel (plain TypeScript, EN / TR) |
+| `src/viewer/` | Character / animation test page |
+| `tools/` | Character build pipeline (Python), smoke test, benchmark, OAuth helper, CLI admin |
+| `public/assets/` | Generated GLB characters and the face mask |
+| `tests/` | Vitest unit and integration tests |
 
-## İstemci (/live) alt sistemleri
+## Browser (`/live`) subsystems
 
-- **Engine** — WebGL2 renderer, kalite profilleri (low/medium/high/ultra), dinamik çözünürlük,
-  post-processing (bloom, ton eşleme, vinyet), performans sayaçları.
-- **Club** — prosedürel PBR kulüp: dans pisti, DJ kabini, LED duvarlar (shader), VIP, lounge,
-  giriş + kırmızı halı, neon tabela, balkon, hoparlörler, disko topları, lazerler, hareketli
-  spotlar, sis, yansıtıcı zemin. Tekrarlanan nesneler `InstancedMesh`.
-- **Characters** — MakeHuman (CC0) tabanlı rig'li insan modelleri; kıyafet/saç/aksesuar
-  kombinasyonları; LOD0/1/2; karakter başına tek çizim çağrısı (bölge paleti shader'ı).
-- **Animation** — telifsiz, kod içinde yazılmış prosedürel hareket kütüphanesi. Her hareket
-  "kukla" tanımıdır (pelvis, omurga, el/ayak hedefleri); iki kemikli IK ile çözülüp
-  `AnimationClip` olarak pişirilir. Klip zamanı **vuruş** birimindedir; mikser hızı
-  BPM/60 olduğundan danslar müziğe kilitlenir. Ayaklar IK ile yere sabitlenir.
-- **Navigation** — ızgara tabanlı A*, bölge (pist/VIP/sahne/lounge) başına slot rezervasyonu,
-  yerel kaçınma; karakterler iç içe geçmez, ışınlanmaz.
-- **Audio** — Web Audio: çalma listesi, crossfade, analizör (bass/mid/treble, spektrum,
-  RMS), enerji-akısı beat tespiti, BPM tahmini. Dosya yoksa yerleşik özgün üretken synth.
-- **CameraDirector** — 9 çekim türü, 10–25 sn aralık, yumuşak geçiş, çarpışma kontrolü.
-- **Effects** — Super Chat efektleri (spot, altın parıltı, konfeti, havai fişek, ışık şovu…),
-  sıralı kuyruk sunucuda.
-- **Overlay** — HTML/CSS yayın arayüzü, 16:9 ve 9:16.
+* **Engine** – WebGL 2 renderer, quality presets, dynamic resolution, post-processing (sanitise → bloom → vignette).
+* **Club** – procedural PBR club: LED floor and walls (shaders), DJ booth, VIP, lounge, bar, entrance, neon signs,
+  balcony with stairs, speakers, mirror balls, lasers, moving heads, haze. Repeated props are `InstancedMesh`.
+* **Characters** – 8 MakeHuman (CC0) based archetypes with 4 LODs; clothes / hair / accessories as parts of one
+  mesh; one draw call per character with a region-palette shader.
+* **Animation** – original procedural motion library: each motion is a "puppet" pose function solved with two-bone IK
+  and baked into an `AnimationClip`. Clip time is measured in **beats**, so dances lock to the music.
+* **Crowd** – `Dancer` objects hold the data; a pooled detailed `Character` is attached only to "heroes" (nearest to
+  the camera, moving, gesturing, highlighted). Everyone else goes to **CrowdGPU**: animation matrices baked into a float
+  texture per archetype, looks stored in a shared look texture, one instanced draw call per archetype.
+* **Navigation** – two-level grid (ground floor + balcony, linked at the stair landing), A*, place reservation with
+  roomy (0.9 m) and packed (0.58 m, compact dances) places, local avoidance, door throttle.
+* **Audio** – Web Audio playlist with crossfade, analyser (bands, spectrum, level), onset beat detection, BPM estimate,
+  original generative synth when no files exist.
+* **Camera director** – 13 shots, 10–25 s, fade cuts, constraints against walls, the balcony slab and people.
+* **Effects** – pooled confetti and fireworks; supporter effects are queued on the server.
+* **HUD** – HTML / CSS overlay for 16:9 and 9:16 (logo, count, song, event, votes, door queue, banners).
 
-## Protokol
+## Protocol
 
-Tek WebSocket uç noktası `/ws?role=live|admin&token=…`. Mesajlar `shared/protocol.ts`
-içinde tiplenmiştir. Sunucu → istemci: `snapshot`, `member:join/leave/update`, `action`,
-`effect`, `event`, `vote`, `music`, `settings`, `chat` (yalnızca admin), `log`, `stats`.
-İstemci → sunucu: `live:stats`, `live:music` (BPM/parça bilgisi), `admin:*` komutları.
+One WebSocket endpoint `/ws?role=live|admin&token=…`; messages are typed in `shared/protocol.ts`.
+Server → clients: `snapshot`, `join`, `leave`, `update`, `action`, `duo`, `effect`, `effectStop`, `event`, `vote`,
+`queue`, `queueNotice`, `settings`, `mode`, `notice`, `music`, `camera`, `test`, `emergency`, and for the admin only
+`chat`, `log`, `status`. Live → server: `stats`, `musicInfo`, `clientError`, `bench`. Admin → server: `connect`,
+`disconnect`, `platform`, `settings`, `kick`, `block`, `unblock`, `grantVip`, `demo`, `music`, `camera`, `event`,
+`eventVote`, `effects`, `test`, `emergency`, `clearLogs`.
 
-## Performans stratejisi
+## Performance strategy
 
-LOD + animasyon LOD (uzak karakterlerde düşük güncelleme hızı), frustum culling, nesne
-havuzu, instancing, sınırlı gerçek zamanlı ışık (ışık hüzmeleri additive mesh), tek gölge
-haritası, dinamik çözünürlük. Gerçek FPS yalnızca `tools/benchmark` ve yönetim panelindeki
-benchmark ile hedef makinede ölçülür; ölçülmemiş değer iddia edilmez.
+Hero / GPU-crowd split, 4 LODs, animation LOD (lower update rate far away, frozen matrices off-screen), frustum culling,
+pooled characters and particles, instancing, one shadow-casting light, beams as additive meshes, dynamic resolution,
+bounded queues and caches for long streams. Real FPS is only measured with the built-in benchmark on the target PC.

@@ -1,5 +1,19 @@
 # NEON CLUB LIVE — İlerleme / Progress
 
+## English summary
+
+All seven planned stages are implemented: club scene, rigged characters and animation, music / beat analysis,
+camera director and events, YouTube chat, Super Chat effects and admin panel, OBS integration, performance work and
+tests. Later additions: Twitch, Kick and (optional, unofficial) TikTok; support policy; balcony and two-level navigation;
+GPU-instanced crowd for 1,500+ avatars; door queue with optional supporter priority; phone audio fix.
+
+Verified in the development environment (no GPU, software rendering): unit and integration tests (`npm test`),
+production build, headless smoke test with resource-leak check, a 1,500-avatar demo in the browser, and screenshots.
+**Not verified:** real YouTube / Twitch / Kick / TikTok connections (only mocked), and FPS on the target GPU – run
+`npm run benchmark` on your PC. The Turkish development log follows below.
+
+---
+
 ✅ yazıldı ve bu ortamda çalıştırılarak doğrulandı · 🟡 yazıldı, kısmen doğrulandı · ⬜ yapılmadı
 
 | Aşama | Kapsam | Durum |

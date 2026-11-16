@@ -1,4 +1,6 @@
-# Asset licences
+# Asset licences · Varlık lisansları
+
+**English** below · [Türkçe özet](#türkçe-özet)
 
 Every asset that ships with NEON CLUB LIVE is listed here. Nothing is downloaded at run time.
 
@@ -52,3 +54,24 @@ vite (MIT), typescript (Apache-2.0), tsx (MIT), vitest (MIT). See `node_modules/
 signing service) is **not** a dependency and is not distributed with this project. It is installed only if you run
 `npm run enable-tiktok`. If you do, and you distribute or offer the combined program to others over a network, the
 AGPL's conditions for that library apply to you.
+
+---
+
+## Türkçe özet
+
+* **Karakterler:** Taban model, şekil hedefleri, `game_engine` iskeleti ve ağırlıklar MakeHuman / MPFB2'den alınmıştır ve
+  **CC0 1.0** lisanslıdır (kamu malı). 8 vücut tipi bu CC0 verilerinden üretilmiştir. Kıyafetler, saçlar, şapkalar,
+  gözlükler ve yüz maskesi `tools/build_characters.py` ile kodla üretilmiştir ve projenin MIT lisansı altındadır.
+  MakeHuman'ın program kodu (AGPL) projede yoktur.
+* **Animasyonlar:** 37 hareketin tamamı `src/live/chars/dances.ts` içinde kodla yazılmıştır (MIT); hareket yakalama veya
+  üçüncü taraf animasyon verisi kullanılmamıştır.
+* **Müzik:** Yerleşik parçalar `src/live/audio.ts` içindeki özgün synth ile canlı üretilir (MIT); yayınlanabilir ve para
+  kazanılabilir. `music/` klasörüne koyduğun dosyaların hakları senin sorumluluğundadır.
+* **Kulüp, efektler, arayüz:** Özgün kod (MIT).
+* **YouTube API tanımı:** `server/youtube/proto/stream_list.proto`, Google'ın yayımladığı `streamList` arayüz tanımıdır ve
+  yalnızca bu API'yi çağırmak için kullanılır.
+* **npm paketleri:** three, ws (MIT), dotenv (BSD-2), @grpc/grpc-js, @grpc/proto-loader (Apache-2.0), vite, tsx, vitest (MIT),
+  typescript (Apache-2.0).
+* **İsteğe bağlı eklenti (dahil değil):** `tiktok-live-connector` **AGPL-3.0** lisanslıdır ve projeyle dağıtılmaz; sadece
+  `npm run enable-tiktok` çalıştırırsan kurulur. Birleşik programı başkalarına dağıtırsan veya ağ üzerinden sunarsan o
+  kütüphane için AGPL koşulları geçerli olur.

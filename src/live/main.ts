@@ -18,7 +18,8 @@ const q = new URLSearchParams(location.search);
 const overlay = new Overlay(document.getElementById('overlay')!);
 const engine = new Engine(document.getElementById('stage')!);
 const forcedQuality = q.get('quality') as Quality | null;
-engine.setQuality(forcedQuality ?? 'high', !q.has('fixedres'));
+engine.forcedScale = Math.min(3, Number(q.get('scale')) || 0);
+engine.setQuality(forcedQuality ?? 'high', !q.has('fixedres') && !engine.forcedScale);
 const club = new Club(engine);
 const effects = new Effects(engine);
 const audio = new AudioSystem();
@@ -55,7 +56,7 @@ crowd.onArrive = () => { if (!dj.busy && Math.random() < 0.15) dj.playOnce('wave
 function applySettings(s: Settings) {
   const first = !settings;
   settings = s;
-  engine.setQuality(forcedQuality ?? s.quality, s.dynamicResolution && !q.has('fixedres'));
+  engine.setQuality(forcedQuality ?? s.quality, s.dynamicResolution && !q.has('fixedres') && !engine.forcedScale);
   club.setLights(s.lights);
   audio.setSettings(q.has('mute') ? { ...s.music, volume: 0 } : s.music);
   overlay.setLang(s.overlayLang);
