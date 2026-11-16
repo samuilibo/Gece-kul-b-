@@ -255,7 +255,7 @@ export class AudioSystem {
     const n = this.playlist.length;
     if (!n) return;
     let i: number;
-    if (this.settings.repeat === 'one' && this.index >= 0 && dir === 1 && this.autoAdvance) i = this.index;
+    if ((this.settings.repeat === 'one' || this.settings.lock) && this.index >= 0 && dir === 1 && this.autoAdvance) i = this.index;
     else if (dir < 0 && this.history.length > 1) { this.history.pop(); i = this.history.pop()!; }
     else if (this.settings.shuffle && n > 2) { do { i = Math.floor(Math.random() * n); } while (i === this.index); }
     else i = (this.index + dir + n) % n;
@@ -309,7 +309,7 @@ export class AudioSystem {
       if (old) g.gain.linearRampToValueAtTime(1, this.ctx.currentTime + xf);
       srcNode.connect(g); g.connect(this.master);
       deck.el = el; deck.gain = g;
-      el.onerror = () => { if (this.deck === deck) { console.warn('cannot play', track.title); setTimeout(() => this.advance(), 500); } };
+      el.onerror = () => { if (this.deck === deck) { console.warn('cannot play', track.title); if (!this.settings.lock) setTimeout(() => this.advance(), 500); } };
       void el.play().catch(() => { /* autoplay blocked until resume() */ });
       this.onsets = []; this.bpmDetected = 0;
     }

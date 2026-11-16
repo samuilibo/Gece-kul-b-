@@ -254,7 +254,7 @@ Rastgelelik, bahis, para sıralaması veya "şu kadar gönder, şu açılsın" h
 
 ## 9. Müzik
 
-`music/` klasörüne **yalnızca yayınlama ve para kazanma hakkın olan müzikleri** koy (MP3, WAV, OGG; alt klasörler = türler).
+`music/` klasörüne **yalnızca yayınlama ve para kazanma hakkın olan müzikleri** koy (MP3, WAV, OGG, M4A, AAC, FLAC, OPUS, WEBM; alt klasörler = türler).
 Spotify veya YouTube'dan müzik çekme. Panelde çalma listesi, karıştırma, tekrar, ses, crossfade, ileri/geri ve tür seçimi var.
 Bir tür için dosya yoksa **özgün, yerleşik üretken synth** o türü çalar (EDM, Techno, Deep House, Progressive, Trance,
 Hip-hop, Disco, Synthwave, Hicaz makamıyla Türkçe elektronik).

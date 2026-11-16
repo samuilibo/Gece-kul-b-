@@ -4,7 +4,7 @@ Put **only music you are licensed to stream publicly and use commercially** here
 (your own productions, tracks bought with a streaming/commercial licence, CC0 / CC-BY tracks
 whose attribution you show on stream, etc.). Do not rip from Spotify, YouTube or other services.
 
-Supported: `.mp3`, `.wav`, `.ogg`.
+Supported: `.mp3`, `.wav`, `.ogg`, `.m4a`, `.aac`, `.flac`, `.opus`, `.webm`.
 
 Optional genre sub-folders make `!song <genre>` votes and events pick matching tracks:
 

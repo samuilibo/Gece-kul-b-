@@ -31,6 +31,8 @@ const I18N: Record<string, [string, string]> = {
   bpm: ['BPM (0 = otomatik)', 'BPM (0 = auto)'], source: ['Kaynak', 'Source'], prev: ['Önceki', 'Prev'], next: ['Sonraki', 'Next'], toggle: ['Oynat/Durdur', 'Play/Pause'], rescan: ['Klasörü tara', 'Rescan folder'],
   genre: ['Tür çal', 'Play genre'], nowPlaying: ['Çalıyor', 'Now playing'], detected: ['algılanan', 'detected'],
   musicLock: ['Müziği sabitle (etkinlik ve sohbet oylaması parçayı değiştirmesin)', 'Lock music (events and chat votes do not change the track)'],
+  multiLive: ['{n} adet /live sayfası açık. Her biri kendi müziğini ayrı çalar ve bu yüzden müzik değişiyormuş gibi duyulur. Yalnızca OBS içindeki sayfayı açık bırak veya diğerlerine ?mute ekle.', '{n} /live pages are open. Each plays its own music, so it sounds like the track keeps changing. Keep only the OBS one open or add ?mute to the others.'],
+  noFiles: ['music/ klasöründe desteklenen dosya bulunamadı (mp3, wav, ogg, m4a, aac, flac, opus, webm). Yerleşik müzik çalıyor.', 'No supported files in music/ (mp3, wav, ogg, m4a, aac, flac, opus, webm). Playing built-in music.'],
   lights: ['Işıklar', 'Lights'], intensity: ['Yoğunluk', 'Intensity'], lasers: ['Lazerler', 'Lasers'], fog: ['Sis', 'Fog'], strobe: ['Flaş (yumuşak)', 'Strobe (soft)'], mode: ['Mod', 'Mode'],
   camera: ['Kamera', 'Camera'], auto: ['Otomatik', 'Auto'], welcome: ['Yeni gelen için giriş çekimi', 'Welcome shot for new arrivals'],
   events: ['Etkinlikler', 'Events'], current: ['Şu an', 'Current'], startEvent: ['Başlat', 'Start'], vote: ['Oylama başlat', 'Start vote'], eventMinutes: ['Etkinlik süresi (dk)', 'Event length (min)'], autoVote: ['Otomatik oylama', 'Automatic vote'],
@@ -116,6 +118,7 @@ function render() {
     <label style="min-width:0">${t('source')}</label><select id="msrc">${['auto', 'files', 'builtin'].map((v) => opt(v, v, s.music.source)).join('')}</select></div>
   <div class="row"><label style="min-width:0">${chk('mlock', s.music.lock)} ${t('musicLock')}</label></div>
   <div class="row"><label>${t('genre')}</label><select id="genre">${GENRES.map((g) => opt(g, GENRE_LABEL[g], '')).join('')}</select><button id="genreGo">▶</button></div>
+  <div id="musicWarn"></div>
   <div class="list" id="playlist" style="max-height:180px"></div></section>
 <section><h2>${t('lights')}</h2>
   <div class="row"><label>${t('intensity')}</label><input type="range" id="li" min="0.2" max="1.6" step="0.05" value="${s.lights.intensity}"></div>
@@ -289,6 +292,10 @@ function renderStatus() {
   const m = status.music;
   $('musicInfo').innerHTML = m ? `<span>${t('nowPlaying')}</span><b>${esc(m.title)}</b><span>BPM</span><b>${m.bpm}${m.bpmDetected ? ` (${t('detected')} ${m.bpmDetected})` : ''}</b>
     <span></span><b>${Math.floor(m.position / 60)}:${String(Math.floor(m.position % 60)).padStart(2, '0')} / ${Math.floor(m.duration / 60)}:${String(Math.floor(m.duration % 60)).padStart(2, '0')} ${m.playing ? '▶' : '⏸'}</b>` : `<span></span><b>${t('noLive')}</b>`;
+  const warn: string[] = [];
+  if (status.liveClients > 1) warn.push(t('multiLive').replace('{n}', String(status.liveClients)));
+  if (state?.settings.music.source !== 'builtin' && status.playlist.length && status.playlist.every((p) => p.builtin)) warn.push(t('noFiles'));
+  $('musicWarn').innerHTML = warn.map((w) => `<div class="it" style="color:#ffb347">⚠ ${esc(w)}</div>`).join('');
   const pl = $('playlist');
   const sig = status.playlist.map((p) => p.title).join('|');
   if (pl.dataset.sig !== sig) {

@@ -180,9 +180,10 @@ async function onAdmin(msg: AdminMsg) {
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png',
   '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.glb': 'model/gltf-binary', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
+  '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.flac': 'audio/flac', '.opus': 'audio/ogg', '.webm': 'audio/webm',
   '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.ktx2': 'image/ktx2', '.wasm': 'application/wasm',
 };
-const AUDIO_EXT = new Set(['.mp3', '.wav', '.ogg']);
+const AUDIO_EXT = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.opus', '.webm']);
 
 function sendFile(req: IncomingMessage, res: ServerResponse, file: string, cache = false) {
   let st;

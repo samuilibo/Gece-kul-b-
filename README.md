@@ -255,7 +255,7 @@ betting, no money leaderboard, no "send X to unlock Y" goal.
 
 ## 9. Music
 
-Put **only music you have the rights to stream and monetise** into `music/` (MP3, WAV, OGG; sub-folders = genres).
+Put **only music you have the rights to stream and monetise** into `music/` (MP3, WAV, OGG, M4A, AAC, FLAC, OPUS, WEBM; sub-folders = genres).
 Do not rip audio from Spotify or YouTube. The panel has playlist, shuffle, repeat, volume, crossfade, next/previous and
 genre selection. When a genre has no files, an **original built-in generative synthesiser** plays it (EDM, Techno,
 Deep House, Progressive, Trance, Hip-hop, Disco, Synthwave, Turkish electronic with the Hicaz scale).
