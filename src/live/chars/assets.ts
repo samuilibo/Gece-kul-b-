@@ -15,6 +15,7 @@ export interface Archetype {
   eyeY: number;
   headTop: number;
   lods: LodData[];
+  crowdLod: LodData | null;                               // LOD3, drawn by the GPU crowd renderer
   bones: BoneDef[];
   inverses: THREE.Matrix4[];
   rest: Map<string, THREE.Vector3>;                        // rest pose joint positions (model space)
@@ -43,9 +44,9 @@ export async function loadArchetypes(base = '/assets/characters', onProgress?: (
     const lm = (gltf.scene.getObjectByName(id)?.userData ?? root.userData) as { height: number; eyeY: number; headTop: number; gender: 'm' | 'f' };
     const lods: LodData[] = [];
     let skeleton: THREE.Skeleton | null = null;
-    for (let li = 0; li < 3; li++) {
+    for (let li = 0; li < 4; li++) {
       const node = gltf.scene.getObjectByName(`LOD${li}`);
-      if (!node) throw new Error(`${id}: LOD${li} missing`);
+      if (!node) { if (li === 3) break; throw new Error(`${id}: LOD${li} missing`); }
       const meshes: THREE.SkinnedMesh[] = [];
       node.traverse((o) => { if ((o as THREE.SkinnedMesh).isSkinnedMesh) meshes.push(o as THREE.SkinnedMesh); });
       skeleton ??= meshes[0].skeleton;
@@ -67,7 +68,7 @@ export async function loadArchetypes(base = '/assets/characters', onProgress?: (
     const rest = new Map<string, THREE.Vector3>();
     bones.forEach((b) => rest.set(b.name, b.parent >= 0 ? rest.get(bones[b.parent].name)!.clone().add(b.pos) : b.pos.clone()));
     return {
-      id, index, gender: lm.gender, height: lm.height, eyeY: lm.eyeY, headTop: lm.headTop, lods, bones,
+      id, index, gender: lm.gender, height: lm.height, eyeY: lm.eyeY, headTop: lm.headTop, lods: lods.slice(0, 3), crowdLod: lods[3] ?? null, bones,
       inverses: sk.boneInverses.map((m) => m.clone()), rest, clips: new Map(), geoCache: new Map(),
     } satisfies Archetype;
   }));

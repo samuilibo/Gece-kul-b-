@@ -32,6 +32,7 @@ const ALIASES: Record<CommandName, string[]> = {
   leave: ['leave', 'cik', 'cikis'],
   help: ['help', 'yardim', 'komutlar'],
   event: ['event', 'etkinlik', 'oy', 'vote'],
+  queue: ['queue', 'sira', 'siram', 'line', 'kuyruk'],
 };
 
 const LOOKUP = new Map<string, CommandName>();
@@ -51,6 +52,6 @@ export function parseCommand(text: string): ParsedCommand | null {
 }
 
 export const HELP_TEXT = {
-  tr: '!katıl · !dans · !shuffle · !robot · !breakdance · !zıpla · !selam · !otur · !kıyafet · !renk · !vip · !sahne · !kamera · !müzik <tür> · !duo <isim> · !accept · !çık',
-  en: '!join · !dance · !shuffle · !robot · !breakdance · !jump · !wave · !sit · !outfit · !color · !vip · !stage · !camera · !song <genre> · !duo <name> · !accept · !leave',
+  tr: '!katıl (doluysa sıraya girer, !sıra) · !dans · !shuffle · !robot · !breakdance · !zıpla · !selam · !otur · !kıyafet · !renk · !vip · !sahne · !kamera · !müzik <tür> · !duo <isim> · !accept · !çık',
+  en: '!join (queues when full, !queue) · !dance · !shuffle · !robot · !breakdance · !jump · !wave · !sit · !outfit · !color · !vip · !stage · !camera · !song <genre> · !duo <name> · !accept · !leave',
 };

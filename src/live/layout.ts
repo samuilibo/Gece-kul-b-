@@ -21,8 +21,19 @@ export const STAIRS = [
 
 export interface Seat { x: number; z: number; yaw: number; y: number }
 
-/** Walkable surface height. */
-export function groundY(x: number, z: number): number {
+/** Stairs from the dance-floor level up to the south balcony (rising towards -x), and the landing at the top. */
+export const BAL_STAIR = { x0: -10.6, x1: -4.0, z0: 7.0, z1: 8.4 };
+export const BAL_LANDING = { x0: -12.0, x1: -10.6, z0: 7.0, z1: 9.0 };
+export const BAL_AREAS = [
+  { x0: -18, x1: -13, z0: -14, z1: 14 }, { x0: 13, x1: 18, z0: -14, z1: 14 }, { x0: -13, x1: 13, z0: 9, z1: 14 },
+];
+export const BAL_TABLES: [number, number][] = [[-15.6, -9], [-15.6, -4], [-15.6, 1], [-15.6, 6], [15.6, -9], [15.6, -4], [15.6, 1], [15.6, 6], [-5, 12], [5, 12]];
+
+/** Walkable surface height. level 1 = balcony. */
+export function groundY(x: number, z: number, level = 0): number {
+  if (level === 1) return BALCONY.y;
+  if (x >= BAL_LANDING.x0 && x <= BAL_LANDING.x1 && z >= BAL_LANDING.z0 && z <= BAL_LANDING.z1) return BALCONY.y;
+  if (x >= BAL_STAIR.x0 && x <= BAL_STAIR.x1 && z >= BAL_STAIR.z0 && z <= BAL_STAIR.z1) return BALCONY.y * Math.min(1, Math.max(0, (BAL_STAIR.x1 - x) / (BAL_STAIR.x1 - BAL_STAIR.x0)));
   if (x >= STAGE.x0 && x <= STAGE.x1 && z <= STAGE.z1) return STAGE.y;
   if (x >= VIP.x0 && z >= VIP.z0 && z <= VIP.z1) return VIP.y;
   for (const s of STAIRS) {

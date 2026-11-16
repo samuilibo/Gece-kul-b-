@@ -112,6 +112,15 @@ export class Character {
 
   get busy() { return this.once !== null; }
 
+  /** Back to a neutral state before the object is reused for another viewer (pooling). */
+  reset() {
+    this.mixer.stopAllAction();
+    this.current = null; this.once = null; this.clipName = '';
+    this.skip = false;
+    this.uniforms.uGold.value = 0;
+    this.setTag(null);
+  }
+
   /**
    * @param dt seconds since this character was last updated (may span several frames)
    * @param beats global beat clock, @param bps beats per second, @param speed ground speed for gait clips

@@ -595,7 +595,8 @@ def build(mh, a, mask_out=None):
 
     lods = [sources,
             [s.lod(0.024, head_fine) for s in sources],
-            [s.lod(0.06, head_fine) for s in sources]]
+            [s.lod(0.06, head_fine) for s in sources],
+            [s.lod(0.115, head_fine) for s in sources]]   # LOD3: GPU-instanced far crowd
     landmarks = {"height": float(P[body_idx][:, 1].max()), "eyeY": float(eye[1]), "headTop": float(head_top[1]),
                  "gender": "m" if a["gender"] > 0.5 else "f"}
     return bones, lods, landmarks

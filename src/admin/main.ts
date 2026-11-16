@@ -14,7 +14,9 @@ const I18N: Record<string, [string, string]> = {
   ttHelp: ['TikTok’un resmi canlı sohbet API’si yok. Bu bağlantı gayri resmi bir topluluk kütüphanesi ve üçüncü taraf imza servisi (Euler Stream) kullanır; her an bozulabilir ve TikTok kurallarıyla çelişebilir. Sorumluluk sizdedir. Kütüphane AGPL-3.0 lisanslıdır ve projeye dahil değildir: bir kez “npm run enable-tiktok” çalıştırın.', 'TikTok has no official LIVE chat API. This uses an unofficial community library and a third-party signing service (Euler Stream); it can break at any time and may conflict with TikTok’s terms. Use at your own risk. The library is AGPL-3.0 and not bundled: run “npm run enable-tiktok” once.'],
   accept: ['Riskleri anladım, gayri resmi bağlantıya izin ver', 'I understand the risks, allow the unofficial connector'], webhookPort: ['Webhook portu', 'Webhook port'],
   supporterVip: ['Destekçiye geçici VIP (dk, 0 = kapalı)', 'Temporary VIP for supporters (min, 0 = off)'],
-  autoJoin: ['Destekçi kulüpte değilse otomatik katılsın', 'Supporters not in the club join automatically'], showComments: ['Destek mesajlarını göster', 'Show supporter messages'],
+  autoJoin: ['Destekçi kulüpte değilse otomatik katılsın', 'Supporters not in the club join automatically'],
+  queueTitle: ['Kapı sırası', 'Door queue'], queuePrio: ['Kulüp doluyken destekçiler öne geçsin (miktara göre)', 'Supporters skip the queue when full (by amount)'],
+  queueFree: ['Her N öncelikli girişte 1 ücretsiz (0 = kapalı)', 'Every N priority entries let 1 free viewer in (0 = off)'], inQueue: ['Sırada', 'In queue'], showComments: ['Destek mesajlarını göster', 'Show supporter messages'],
   skip: ['Efekti atla', 'Skip effect'], clearQueue: ['Kuyruğu temizle', 'Clear queue'],
   creds: ['Kimlik bilgileri', 'Credentials'], minPoll: ['Min. sorgu aralığı (ms)', 'Min poll interval (ms)'], apiKey: ['API anahtarı', 'API key'], oauth: ['OAuth', 'OAuth'], set: ['tanımlı', 'set'], notSet: ['tanımlı değil', 'not set'],
   credHelp: ['Anahtarlar yalnızca sunucudaki .env dosyasında tutulur ve tarayıcıya hiç gönderilmez. Değiştirmek için .env dosyasını düzenleyip sunucuyu yeniden başlatın.', 'Keys live only in the server-side .env file and are never sent to the browser. Edit .env and restart the server to change them.'],
@@ -87,7 +89,7 @@ function render() {
 </section>
 <section class="wide"><h2>${t('chat')}</h2><div class="list chat" id="chat"></div></section>
 <section><h2>${t('members')} <span id="mCount"></span></h2>
-  <div class="row"><label>${t('maxChars')}</label><input type="number" id="maxChars" min="1" max="300" value="${s.maxCharacters}"></div>
+  <div class="row"><label>${t('maxChars')}</label><input type="number" id="maxChars" min="1" max="1510" value="${s.maxCharacters}"></div>
   <div class="list" id="members"></div>
   <h2 style="margin-top:12px">${t('blocked')}</h2><div class="list" id="blocked"></div>
 </section>
@@ -98,6 +100,10 @@ function render() {
   <table>${SC_EFFECTS.map((e) => `<tr><td>${e}</td><td>${chk(`sc_on_${e}`, s.superchat.effects[e].on)}</td><td>${t('minTier')} <input type="number" min="1" max="11" id="sc_t_${e}" value="${s.superchat.effects[e].minTier}"></td></tr>`).join('')}</table>
   <div class="row"><label>${t('supporterVip')}</label><input type="number" id="supVip" min="0" max="600" value="${s.supporterVipMinutes}"></div>
   <div class="row"><label>${t('autoJoin')}</label>${chk('autoJoin', s.supporterAutoJoin)}<label style="min-width:0">${t('showComments')}</label>${chk('scCom', s.superchat.showComments)}</div>
+  <h2 style="margin-top:12px">${t('queueTitle')} <span class="mut" id="qInfo"></span></h2>
+  <div class="row"><label style="min-width:0">${chk('qPrio', s.queuePaidPriority)} ${t('queuePrio')}</label></div>
+  <div class="row"><label>${t('queueFree')}</label><input type="number" id="qFree" min="0" max="50" value="${s.queueFreeEvery}"></div>
+  <div class="list" id="qList" style="max-height:140px"></div>
   <div class="row"><button id="fxSkip">⏭ ${t('skip')}</button><button id="fxClear">${t('clearQueue')}</button></div>
   <p class="mut">${t('scNote')}</p></section>
 <section><h2>${t('music')}</h2><div class="kv" id="musicInfo"></div>
@@ -125,8 +131,8 @@ function render() {
   <div class="row"><label>${t('names')}</label>${chk('names', s.showNames)}<label style="min-width:0">${t('avatars')}</label>${chk('avs', s.showAvatars)}<label style="min-width:0">${t('vipOpen')}</label>${chk('vipOpen', s.vipOpen)}</div>
   <h2 style="margin-top:12px">${t('perf')}</h2><div class="kv" id="perf"></div><div class="row"><button id="bench">${t('bench')}</button></div></section>
 <section><h2>${t('demo')}</h2>
-  <div class="row">${[10, 50, 100, 300].map((n) => `<button class="pri" data-demo="${n}">${t('demoStart')} ${n}</button>`).join('')}</div>
-  <div class="row">${[10, 50].map((n) => `<button data-add="${n}">+${n} ${t('add')}</button>`).join('')}<button id="demoStop">${t('demoStop')}</button><button id="loadTest">${t('loadTest')}</button></div>
+  <div class="row">${[10, 50, 100, 300, 1500].map((n) => `<button class="pri" data-demo="${n}">${t('demoStart')} ${n}</button>`).join('')}</div>
+  <div class="row">${[10, 50].map((n) => `<button data-add="${n}">+${n} ${t('add')}</button>`).join('')}<button id="demoStop">${t('demoStop')}</button><button id="loadTest">${t('loadTest')}</button><button id="loadTest1500">${t('loadTest')} 1500</button></div>
   <div class="row"><input type="text" id="demoText" value="!dance"><button id="demoSend">${t('send')}</button></div>
   <div class="row"><label>${t('simSc')}</label>${t('tier')} <input type="number" id="scTier" min="1" max="11" value="3"><button id="demoSc">${t('send')}</button></div>
   <div class="row"><button id="discTest">${t('discTest')}</button></div>
@@ -139,7 +145,7 @@ function render() {
 </main>
 <button class="stop ${state!.emergency ? '' : 'danger'}" id="stop">${state!.emergency ? t('resume') : '⛔ ' + t('stop')}</button>`;
   bind();
-  renderMembers(); renderChat(); renderLogs(); renderStatus();
+  renderMembers(); renderChat(); renderLogs(); renderStatus(); renderQueue();
 }
 
 function bind() {
@@ -154,6 +160,8 @@ function bind() {
   on('maxChars', 'change', () => patch({ maxCharacters: num('maxChars') }));
   on('supVip', 'change', () => patch({ supporterVipMinutes: Math.max(0, num('supVip')) }));
   on('autoJoin', 'change', () => patch({ supporterAutoJoin: checked('autoJoin') }));
+  on('qPrio', 'change', () => patch({ queuePaidPriority: checked('qPrio') }));
+  on('qFree', 'change', () => patch({ queueFreeEvery: Math.max(0, num('qFree')) }));
   on('fxSkip', 'click', () => send({ t: 'effects', cmd: 'skip' }));
   on('fxClear', 'click', () => send({ t: 'effects', cmd: 'clear' }));
   on('ttAccept', 'change', () => patch({ platforms: { ...state!.settings.platforms, tiktok: { ...state!.settings.platforms.tiktok, acceptUnofficial: checked('ttAccept') } } }));
@@ -193,6 +201,7 @@ function bind() {
   document.querySelectorAll<HTMLElement>('[data-demo]').forEach((b) => b.addEventListener('click', () => { send({ t: 'demo', cmd: 'stop' }); if (Number(b.dataset.demo) > s.maxCharacters) patch({ maxCharacters: Number(b.dataset.demo) }); send({ t: 'demo', cmd: 'start', count: Number(b.dataset.demo) }); }));
   document.querySelectorAll<HTMLElement>('[data-add]').forEach((b) => b.addEventListener('click', () => send({ t: 'demo', cmd: 'add', count: Number(b.dataset.add) })));
   on('demoStop', 'click', () => send({ t: 'demo', cmd: 'stop' })); on('loadTest', 'click', () => send({ t: 'demo', cmd: 'load', count: 300 }));
+  on('loadTest1500', 'click', () => send({ t: 'demo', cmd: 'load', count: 1500 }));
   on('demoSend', 'click', () => send({ t: 'demo', cmd: 'chat', text: val('demoText') }));
   on('demoSc', 'click', () => send({ t: 'demo', cmd: 'superchat', tier: num('scTier') }));
   on('discTest', 'click', () => send({ t: 'demo', cmd: 'disconnectTest' }));
@@ -222,6 +231,13 @@ function renderMembers() {
   const list = [...members.values()].sort((a, b) => b.joinedAt - a.joinedAt).slice(0, 300);
   box.innerHTML = list.map((m) => `<div class="it"><span class="n">${esc(m.name)}${m.source === 'demo' ? '<span class="tag">DEMO</span>' : `<span class="tag yt" style="background:${PCOL[m.source]}">${PLBL[m.source]}</span>`}${m.vip ? '<span class="tag vip">VIP</span>' : ''} <span class="mut">${m.zone}${m.sitting ? ' · sit' : ''}</span></span>
     <button data-a="cam" data-id="${esc(m.id)}">🎥</button><button data-a="vip" data-id="${esc(m.id)}">VIP</button><button data-a="kick" data-id="${esc(m.id)}">${t('kick')}</button><button data-a="block" data-id="${esc(m.id)}">${t('block')}</button></div>`).join('');
+}
+
+function renderQueue() {
+  const q = state?.queue, box = $('qList');
+  if (!q || !box) return;
+  $('qInfo').textContent = `${t('inQueue')}: ${q.size} (${q.priority} ★) · ${q.members}/${q.capacity}`;
+  box.innerHTML = q.top.map((e, i) => `<div class="it"><span class="n">${i + 1}. ${e.priority ? '★ ' : ''}${esc(e.name)} <span class="mut">${esc(e.amountText)}</span></span></div>`).join('') || '<div class="it mut">—</div>';
 }
 
 function renderChat() {
@@ -298,6 +314,7 @@ function onMsg(m: ServerMsg) {
     case 'chat': chat.push(m.item); if (chat.length > 500) chat.splice(0, 100); chatDirty = true; break;
     case 'log': logs.push(m.item); if (logs.length > 600) logs.splice(0, 100); logDirty = true; break;
     case 'status': status = m.status; renderStatus(); break;
+    case 'queue': if (state) { state.queue = m.queue; renderQueue(); } break;
   }
 }
 let chatDirty = false, logDirty = false;

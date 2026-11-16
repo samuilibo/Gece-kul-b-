@@ -18,14 +18,15 @@ export interface QualityProfile {
   lod: [number, number];   // distances for LOD1 / LOD2
   animFar: number;         // animation rate (Hz) for far characters
   nameTags: number;        // max visible name tags
+  heroes: number;          // detailed skinned characters; everyone else is drawn by the GPU crowd
   envRefresh: boolean;
 }
 
 export const PROFILES: Record<Quality, QualityProfile> = {
-  low: { maxScale: 0.75, bloom: true, shadows: 0, msaa: 0, realSpots: 2, beams: 4, lasers: 8, fogSprites: 0, lod: [5, 11], animFar: 10, nameTags: 40, envRefresh: false },
-  medium: { maxScale: 1, bloom: true, shadows: 0, msaa: 0, realSpots: 3, beams: 6, lasers: 12, fogSprites: 24, lod: [8, 16], animFar: 15, nameTags: 80, envRefresh: false },
-  high: { maxScale: 1, bloom: true, shadows: 1024, msaa: 4, realSpots: 4, beams: 8, lasers: 16, fogSprites: 40, lod: [11, 22], animFar: 20, nameTags: 150, envRefresh: true },
-  ultra: { maxScale: 1.5, bloom: true, shadows: 2048, msaa: 4, realSpots: 6, beams: 10, lasers: 24, fogSprites: 64, lod: [16, 30], animFar: 30, nameTags: 300, envRefresh: true },
+  low: { maxScale: 0.75, bloom: true, shadows: 0, msaa: 0, realSpots: 2, beams: 4, lasers: 8, fogSprites: 0, lod: [5, 11], animFar: 10, nameTags: 40, heroes: 50, envRefresh: false },
+  medium: { maxScale: 1, bloom: true, shadows: 0, msaa: 0, realSpots: 3, beams: 6, lasers: 12, fogSprites: 24, lod: [8, 16], animFar: 15, nameTags: 80, heroes: 90, envRefresh: false },
+  high: { maxScale: 1, bloom: true, shadows: 1024, msaa: 4, realSpots: 4, beams: 8, lasers: 16, fogSprites: 40, lod: [11, 22], animFar: 20, nameTags: 150, heroes: 140, envRefresh: true },
+  ultra: { maxScale: 1.5, bloom: true, shadows: 2048, msaa: 4, realSpots: 6, beams: 10, lasers: 24, fogSprites: 64, lod: [16, 30], animFar: 30, nameTags: 300, heroes: 220, envRefresh: true },
 };
 
 /** Replaces NaN/Inf and clamps extreme HDR values so one bad pixel can never black out the bloom chain. */

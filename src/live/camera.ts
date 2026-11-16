@@ -146,7 +146,7 @@ export class CameraDirector {
     }
     for (const o of this.crowd.dancers.values()) {
       const e = Math.hypot(p.x - o.pos.x, p.z - o.pos.z);
-      if (e < 0.7) p.y = Math.max(p.y, o.pos.y + o.ch.headY + 0.45);
+      if (e < 0.7) p.y = Math.max(p.y, o.pos.y + o.headY + 0.45);
     }
   }
 }

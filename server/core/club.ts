@@ -28,6 +28,12 @@ const STAGE_MS = 45000;
 const VOTE_MS = 45000;
 const EVENT_VOTE_MS = 60000;
 const MAX_QUEUE = 50;
+export const MAX_CAPACITY = 1510;            // places for non-VIP viewers the club provides (ground floor + balcony + lounge)
+const MAX_DOOR_QUEUE = 5000;
+// approximate value of a YouTube tier (YouTube already normalises currencies into tiers); used only for queue order
+const TIER_USD = [0, 1.5, 3.5, 7.5, 15, 35, 75, 150, 250, 350, 450, 500];
+
+interface QueueEntry { id: string; name: string; author: ChatEvent['author']; source: Source; since: number; usd: number; paidAt: number; texts: string[] }
 
 const GENRE_ALIASES: Record<string, Genre> = {
   edm: 'edm', techno: 'techno', tekno: 'techno', deephouse: 'deephouse', deep: 'deephouse', house: 'deephouse',
@@ -60,6 +66,10 @@ export class ClubState {
   private lastSeen = new Map<string, number>();
   private tempVip = new Map<string, number>();       // member id -> VIP access expires at
   private privileged = new Set<string>();           // platform members / moderators / owner (VIP while present)
+  private doorQueue = new Map<string, QueueEntry>();
+  private queueDirty = true;
+  private paidStreak = 0;
+  private lastQueueSent = '';
   private small = new Map<string, { usd: number; parts: string[]; name: string; since: number; last: ChatEvent }>();
   private granted = new Set<string>();
   private stage = new Map<string, number>();        // member id -> leaves stage at
@@ -91,7 +101,7 @@ export class ClubState {
   publicState(now = Date.now()): PublicState {
     return {
       mode: this.mode, members: [...this.members.values()], settings: this.settings, event: this.event,
-      nextEvent: this.nextEvent, eventEndsAt: this.eventEndsAt, vote: this.vote, emergency: this.emergency, now,
+      nextEvent: this.nextEvent, eventEndsAt: this.eventEndsAt, vote: this.vote, emergency: this.emergency, queue: this.queueInfo(), now,
     };
   }
 
@@ -103,13 +113,15 @@ export class ClubState {
     const drop = (s: Source) => (mode === 'live' ? s === 'demo' : s !== 'demo');
     if (mode !== 'idle') for (const m of [...this.members.values()]) if (drop(m.source)) this.remove(m.id, 'mode');
     if (mode !== 'idle') this.queue = this.queue.filter((e) => !drop(e.source));
+    for (const [id, e] of this.doorQueue) if (mode === 'idle' || drop(e.source)) this.doorQueue.delete(id);
+    this.queueDirty = true;
     this.mode = mode;
     this.send({ t: 'mode', mode }, 'all');
   }
 
   patchSettings(patch: Partial<Settings>) {
     this.settings = mergeSettings(this.settings, patch);
-    this.settings.maxCharacters = Math.max(1, Math.min(300, Math.round(this.settings.maxCharacters)));
+    this.settings.maxCharacters = Math.max(1, Math.min(MAX_CAPACITY, Math.round(this.settings.maxCharacters)));
     this.db.setJson('settings', this.settings);
     this.send({ t: 'settings', settings: this.settings }, 'all');
   }
@@ -170,7 +182,10 @@ export class ClubState {
 
     if (cmd === 'join') {
       if (me) return 'already-in';
-      if (this.members.size >= this.settings.maxCharacters) return 'full';
+      if (this.members.size >= this.settings.maxCharacters || this.doorQueue.size > 0) {
+        const r = this.enqueue(ev, name, now, 0, '');
+        return done(r);
+      }
       this.addMember(ev, name, now);
       return done('joined');
     }
@@ -181,7 +196,9 @@ export class ClubState {
     }
     if (cmd === 'song') return this.voteSong(id, arg, now, done);
     if (cmd === 'event') return this.voteEvent(id, arg, done);
-    if (!me) return 'not-joined';
+    if (cmd === 'queue') return done(this.queuePositionNotice(id, name));
+    if (!me && cmd === 'leave' && this.doorQueue.delete(id)) { this.queueDirty = true; return done('left-queue'); }
+    if (!me) return this.doorQueue.has(id) ? 'queued-wait' : 'not-joined';
     if (me.name !== name) { me.name = name; }
 
     const act = (action: ActionKind, a?: string) => {
@@ -300,6 +317,11 @@ export class ClubState {
     let tier = Math.max(0, Math.min(11, ev.tier ?? (ev.kind === 'superchat' || ev.kind === 'sticker' ? 1 : 3)));
     let amountText = ev.amountText ?? '';
     const id = ev.author.id, anonymous = id.endsWith(':anonymous');
+    // every donation of someone waiting outside improves their place in the door queue (also tiny ones)
+    if (!anonymous && !this.members.has(id) && this.settings.queuePaidPriority) {
+      const usd = ev.usd ?? TIER_USD[Math.max(0, Math.min(11, ev.tier ?? 1))];
+      if (usd > 0 && (this.doorQueue.has(id) || (this.settings.supporterAutoJoin && this.members.size >= this.settings.maxCharacters))) this.enqueue(ev, name, now, usd, ev.amountText ?? '');
+    }
     // 1) tiny gifts (single TikTok roses, a few Bits…) are added up per person for 2 minutes;
     //    once they are worth a real tier they trigger ONE effect for the total.
     if (tier < 1) {
@@ -311,9 +333,13 @@ export class ClubState {
       this.small.delete(id);
       amountText = acc.parts.length > 3 ? `${acc.parts.slice(0, 3).join(' + ')} + …` : acc.parts.join(' + ');
     }
-    // 2) cosmetic perks — never gameplay advantages
+    // 2) perks: temporary VIP, walking in, and — only when the club is full — priority in the door queue
     if (!anonymous) this.grantTempVip(id, now);
-    if (!anonymous && this.settings.supporterAutoJoin && !this.members.has(id) && this.members.size < this.settings.maxCharacters) this.addMember(ev, name, now);
+    if (!anonymous && !this.members.has(id)) {
+      const queued = this.doorQueue.has(id);
+      if (!queued && this.settings.supporterAutoJoin && this.members.size < this.settings.maxCharacters && this.doorQueue.size === 0) this.addMember(ev, name, now);
+      else if (!queued && this.settings.supporterAutoJoin) this.enqueue(ev, name, now, 0, '');
+    }
     if (!sc.enabled) return 'support:effects-off';
     if (this.queue.length >= MAX_QUEUE) return 'support:queue-full';
     const effects = SC_EFFECTS.filter((e) => sc.effects[e].on && tier >= sc.effects[e].minTier);
@@ -333,6 +359,72 @@ export class ClubState {
   private cleanComment(text: string) {
     const t = text.replace(/https?:\/\/\S+|www\.\S+|\S+\.(com|net|org|gg|io|xyz|tv|me|ly)(\/\S*)?/gi, '').replace(/@\S+/g, '').replace(/\s+/g, ' ').trim();
     return !t || this.mod.isProfane(t) ? '' : t.slice(0, 120);
+  }
+
+  // ------------------------------------------------------------------ door queue
+  private queueOrder(): QueueEntry[] {
+    const all = [...this.doorQueue.values()];
+    const paid = this.settings.queuePaidPriority ? all.filter((e) => e.usd > 0).sort((a, b) => b.usd - a.usd || a.paidAt - b.paidAt) : [];
+    const free = all.filter((e) => !paid.includes(e)).sort((a, b) => a.since - b.since);
+    return [...paid, ...free];
+  }
+
+  /** Adds someone to the door queue, or adds a donation to their existing entry. Returns a result code. */
+  private enqueue(ev: ChatEvent, name: string, now: number, usd: number, amountText: string): string {
+    const id = ev.author.id;
+    let e = this.doorQueue.get(id);
+    if (!e) {
+      if (this.doorQueue.size >= MAX_DOOR_QUEUE) return 'queue-full';
+      e = { id, name, author: { ...ev.author }, source: ev.source, since: now, usd: 0, paidAt: 0, texts: [] };
+      this.doorQueue.set(id, e);
+    }
+    if (usd > 0) {
+      const wasPaid = e.usd > 0;
+      e.usd += usd;
+      if (!wasPaid) e.paidAt = now;
+      if (amountText) e.texts.push(amountText);
+    }
+    this.queueDirty = true;
+    const pos = this.queueOrder().findIndex((q) => q.id === id) + 1;
+    this.send({ t: 'queueNotice', kind: usd > 0 ? 'priority' : 'joined', name, position: pos, size: this.doorQueue.size, amountText: usd > 0 ? amountText : undefined }, 'all');
+    return usd > 0 ? `queue-priority:#${pos}` : `queued:#${pos}`;
+  }
+
+  private queuePositionNotice(id: string, name: string): string {
+    const order = this.queueOrder();
+    const pos = order.findIndex((q) => q.id === id) + 1;
+    if (!pos) return this.members.has(id) ? 'already-in' : 'not-queued';
+    this.send({ t: 'queueNotice', kind: 'position', name, position: pos, size: order.length }, 'all');
+    return `queue-position:#${pos}`;
+  }
+
+  /** Lets people in from the door queue while there is room. */
+  private admit(now: number) {
+    if (!this.doorQueue.size || this.mode !== 'live' && this.mode !== 'demo') return;
+    while (this.doorQueue.size && this.members.size < this.settings.maxCharacters) {
+      const order = this.queueOrder();
+      const every = this.settings.queueFreeEvery;
+      let next = order[0];
+      if (every > 0 && next.usd > 0 && this.paidStreak >= every) next = order.find((e) => e.usd === 0) ?? next;
+      this.paidStreak = next.usd > 0 ? this.paidStreak + 1 : 0;
+      this.doorQueue.delete(next.id);
+      this.queueDirty = true;
+      if (this.blockedIds.has(next.id)) continue;
+      // somebody who has not chatted for a long time has probably left the stream
+      if (this.idleMs > 0 && now - (this.lastSeen.get(next.id) ?? next.since) > this.idleMs) continue;
+      this.addMember({ id: `q-${next.id}`, source: next.source, ts: now, author: next.author, kind: 'text', text: '' }, next.name, now);
+    }
+  }
+
+  queueInfo() {
+    const order = this.queueOrder();
+    return {
+      size: order.length, priority: order.filter((e) => e.usd > 0 && this.settings.queuePaidPriority).length, members: this.members.size, capacity: this.settings.maxCharacters,
+      top: order.slice(0, 6).map((e) => ({
+        name: e.name, source: e.source, priority: e.usd > 0 && this.settings.queuePaidPriority,
+        amountText: e.texts.length ? e.texts.slice(-1)[0] + (e.texts.length > 1 ? ` +${e.texts.length - 1}` : '') : '',
+      })),
+    };
   }
 
   private grantTempVip(id: string, now: number) {
@@ -444,6 +536,12 @@ export class ClubState {
   tick(now = Date.now()) {
     if (this.emergency) return;
     this.pump(now);
+    this.admit(now);
+    if (this.queueDirty) {
+      this.queueDirty = false;
+      const q = this.queueInfo(), sig = JSON.stringify(q);
+      if (sig !== this.lastQueueSent) { this.lastQueueSent = sig; this.send({ t: 'queue', queue: q }, 'all'); }
+    }
     for (const [id, until] of this.stage) {
       if (until > now) continue;
       this.stage.delete(id);

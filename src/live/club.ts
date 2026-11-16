@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { ClubEvent, LightSettings } from '../../shared/protocol.ts';
 import { rng, type AudioFrame, type Engine, type QualityProfile } from './engine.ts';
-import { BALCONY, COLUMNS, DISCO_BALLS, DJ, DOOR, FLOOR, ROOM, SOFAS, STAGE, STAIRS, TABLES, VIP } from './layout.ts';
+import { BAL_LANDING, BAL_STAIR, BALCONY, COLUMNS, DISCO_BALLS, DJ, DOOR, FLOOR, ROOM, SOFAS, STAGE, STAIRS, TABLES, VIP } from './layout.ts';
 
 const HDR = (hex: THREE.ColorRepresentation, k: number) => new THREE.Color(hex).multiplyScalar(k);
 const TAU = Math.PI * 2;
@@ -308,7 +308,11 @@ export class Club {
     };
     rail(hz * 2 - d, hx - d, -d / 2, Math.PI / 2, 0);
     rail(hz * 2 - d, -hx + d, -d / 2, Math.PI / 2, 1);
-    rail(hx * 2 - d * 2, 0, hz - d, 0, 2);
+    // south rail with an opening where the balcony stairs arrive
+    const gapA = BAL_LANDING.x0, gapB = BAL_LANDING.x1;
+    rail(gapA - (-hx + d), (-hx + d + gapA) / 2, hz - d, 0, 2);
+    rail(hx - d - gapB, (gapB + hx - d) / 2, hz - d, 0, 2);
+    this.buildBalconyStairs(slabMat, glass);
     // balcony high tables
     const tbl = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.3, 0.04, 18), slabMat, 10);
     const leg = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.03, 0.03, 1.05, 8), gold, 10);
@@ -328,6 +332,30 @@ export class Club {
     this.addNeon('VIP', 2.2, 1.0, new THREE.Vector3(hx - 0.08, 3.1, -3.5), -Math.PI / 2, 2);
     this.addNeon('LOUNGE', 3.6, 0.9, new THREE.Vector3(-hx + 0.08, 3.1, -2.5), Math.PI / 2, 1);
     this.addNeon('BAR', 2.4, 1.0, new THREE.Vector3(-hx + 0.08, 3.2, 9.6), Math.PI / 2, 0);
+  }
+
+  /** Stairs from the floor to the south balcony (rising towards -x) + landing, glass side panels and LED nosing. */
+  private buildBalconyStairs(mat: THREE.Material, glass: THREE.Material) {
+    const st = BAL_STAIR, top = BALCONY.y, n = 24, run = st.x1 - st.x0, w = st.z1 - st.z0, zc = (st.z0 + st.z1) / 2;
+    const steps = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat, n);
+    const nosing = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), this.stripMat(1, 2.2), n);
+    for (let i = 0; i < n; i++) {
+      const h = (top * (i + 1)) / n, x = st.x1 - (i + 0.5) * (run / n);
+      steps.setMatrixAt(i, this.tmpM.compose(this.tmpV.set(x, h / 2, zc), this.tmpQ.identity(), this.tmpS.set(run / n + 0.002, h, w)));
+      nosing.setMatrixAt(i, this.tmpM.compose(this.tmpV.set(x + run / n / 2 - 0.02, h + 0.005, zc), this.tmpQ.identity(), this.tmpS.set(0.03, 0.012, w - 0.1)));
+    }
+    steps.receiveShadow = true;
+    this.group.add(steps, nosing);
+    const L = BAL_LANDING;
+    this.box(L.x1 - L.x0, top, L.z1 - L.z0, mat, (L.x0 + L.x1) / 2, top / 2, (L.z0 + L.z1) / 2).receiveShadow = true;
+    // sloped glass side panels with a top rail
+    const len = Math.hypot(run, top), ang = Math.atan2(top, run);
+    for (const z of [st.z0, st.z1]) {
+      const g = new THREE.Mesh(new THREE.PlaneGeometry(len, 1.0), glass);
+      g.position.set((st.x0 + st.x1) / 2, top / 2 + 0.5, z); g.rotation.z = -ang; g.renderOrder = 3;
+      this.group.add(g);
+      const r = this.box(len, 0.04, 0.05, mat, (st.x0 + st.x1) / 2, top / 2 + 1.0, z); r.rotation.z = -ang;
+    }
   }
 
   private addNeon(text: string, w: number, h: number, pos: THREE.Vector3, ry: number, pi: number) {

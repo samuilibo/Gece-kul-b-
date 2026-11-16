@@ -96,7 +96,7 @@ describe('club state', () => {
     expect(say('a', '!dance', 0)).toBe('not-joined');
     club.patchSettings({ maxCharacters: 1 });
     expect(say('a', '!join', 5000)).toBe('joined');
-    expect(say('b', '!join', 5000)).toBe('full');
+    expect(say('b', '!join', 5000)).toBe('queued:#1');        // full club: door queue
   });
   it('gates VIP and limits the stage', () => {
     const { club, say } = makeClub();

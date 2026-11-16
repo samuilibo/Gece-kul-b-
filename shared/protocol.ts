@@ -9,7 +9,7 @@ export type Quality = 'low' | 'medium' | 'high' | 'ultra';
 
 export const COMMANDS = [
   'join', 'dance', 'shuffle', 'breakdance', 'robot', 'jump', 'wave', 'sit', 'outfit', 'color',
-  'vip', 'stage', 'camera', 'song', 'duo', 'accept', 'leave', 'help', 'event', 'clap', 'floor',
+  'vip', 'stage', 'camera', 'song', 'duo', 'accept', 'leave', 'help', 'event', 'clap', 'floor', 'queue',
 ] as const;
 export type CommandName = (typeof COMMANDS)[number];
 
@@ -106,7 +106,9 @@ export interface Settings {
   minPollMs: number;
   welcomeCamera: boolean;
   supporterVipMinutes: number;   // one-off supporters get TEMPORARY VIP access for this long (0 = off)
-  supporterAutoJoin: boolean;    // a supporter who is not in the club yet walks in (only if there is room)
+  supporterAutoJoin: boolean;
+  queuePaidPriority: boolean;    // when the club is full, supporters are admitted before free viewers (ordered by amount)
+  queueFreeEvery: number;        // optional fairness: after this many priority admissions one free viewer gets in (0 = off)    // a supporter who is not in the club yet walks in (only if there is room)
   platforms: { twitch: { channel: string }; kick: { channel: string }; tiktok: { username: string; acceptUnofficial: boolean } };
 }
 
@@ -128,7 +130,14 @@ export interface PublicState {
   eventEndsAt: number;
   vote: VoteState | null;
   emergency: boolean;
+  queue: QueueInfo;
   now: number;
+}
+
+/** Door queue shown on stream when the club is full. Amounts are shown in the platform's own units. */
+export interface QueueInfo {
+  size: number; priority: number; members: number; capacity: number;
+  top: { name: string; source: Source; priority: boolean; amountText: string }[];
 }
 
 // ---- server -> live / admin
@@ -150,6 +159,8 @@ export type ServerMsg =
   | { t: 'test'; what: string; arg?: string }
   | { t: 'emergency'; on: boolean }
   | { t: 'effectStop' }
+  | { t: 'queue'; queue: QueueInfo }
+  | { t: 'queueNotice'; kind: 'joined' | 'priority' | 'position'; name: string; position: number; size: number; amountText?: string }
   // admin only
   | { t: 'chat'; item: ChatLogItem }
   | { t: 'log'; item: LogItem }
@@ -215,7 +226,7 @@ export type AdminMsg =
 
 export const DEFAULT_COOLDOWNS: Record<CommandName, number> = {
   join: 3, dance: 4, shuffle: 4, breakdance: 6, robot: 4, jump: 3, wave: 3, sit: 5, outfit: 8, color: 5,
-  vip: 10, stage: 30, camera: 60, song: 20, duo: 15, accept: 3, leave: 5, help: 20, event: 5, clap: 3, floor: 5,
+  vip: 10, stage: 30, camera: 60, song: 20, duo: 15, accept: 3, leave: 5, help: 20, event: 5, clap: 3, floor: 5, queue: 10,
 };
 
 export function defaultSettings(): Settings {
@@ -245,6 +256,8 @@ export function defaultSettings(): Settings {
     welcomeCamera: true,
     supporterVipMinutes: 60,
     supporterAutoJoin: true,
+    queuePaidPriority: true,
+    queueFreeEvery: 0,
     platforms: { twitch: { channel: '' }, kick: { channel: '' }, tiktok: { username: '', acceptUnofficial: false } },
   };
 }
