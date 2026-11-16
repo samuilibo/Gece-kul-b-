@@ -65,3 +65,11 @@ body.portrait .toasts{top:13%;left:3%}
 body.portrait .banner{top:30%;max-width:86%}
 body.portrait .hint{white-space:normal;line-height:1.5;padding-bottom:1em}
 .bh em.pl{color:#fff}.bh em.twitch{background:#9146ff}.bh em.kick{background:#53fc18;color:#111}.bh em.tiktok{background:#ff2c55}
+.queue{display:none}.queue.on{display:block}
+.queue .qhead{font-weight:800;color:var(--c2)}
+.queue .qsub{font-size:.78em;opacity:.85;margin-bottom:.2em}
+.qrow{display:flex;justify-content:space-between;gap:.6em;font-size:.82em;padding:.12em .4em;border-radius:.35em}
+.qrow.prio{background:rgba(255,210,63,.14)}.qrow.prio b{color:#ffd23f}
+.qrow span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qhint{font-size:.66em;opacity:.7;margin-top:.35em}
+.toast.prio{border-color:#ffd23f}.toast.prio b{color:#ffd23f}

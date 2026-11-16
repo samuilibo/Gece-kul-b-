@@ -4,7 +4,7 @@ import { BALCONY, COLUMNS, DJ, ROOM, STAGE } from './layout.ts';
 
 interface Pose { pos: THREE.Vector3; look: THREE.Vector3 }
 interface Ctx { t: number; crowd: Crowd; target: string | null; seed: number; center: THREE.Vector3 }
-interface Shot { name: string; weight: number; needs?: 'people' | 'stage' | 'vip'; pose(c: Ctx, out: Pose): void }
+interface Shot { name: string; weight: number; needs?: 'people' | 'stage' | 'vip' | 'balcony'; pose(c: Ctx, out: Pose): void }
 
 const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 const SHOTS: Shot[] = [
@@ -18,6 +18,7 @@ const SHOTS: Shot[] = [
   { name: 'balcony', weight: 2, pose: (c, o) => { const s = c.seed % 2 ? 1 : -1; o.pos.set(s * (12.6 + 0.2 * Math.sin(c.t * 0.1)), 6.1, 6.5 - c.t * 0.06); o.look.set(-s * 1.5, 1.2, -5); } },
   { name: 'orbit', weight: 3, needs: 'people', pose: (c, o) => { const a = c.t * 0.13 + c.seed * 1.7, r = 6.6; o.pos.set(c.center.x + Math.sin(a) * r, 3.1 + 0.4 * Math.sin(c.t * 0.09), c.center.z + Math.cos(a) * r * 0.8); o.look.set(c.center.x, 1.25, c.center.z); } },
   { name: 'stage', weight: 1.2, needs: 'stage', pose: (c, o) => { o.pos.set(2.5 * Math.sin(c.t * 0.14), 2.7, -5.6); o.look.set(0, STAGE.y + 1.1, -10.4); } },
+  { name: 'upper', weight: 1.5, needs: 'balcony', pose: (c, o) => { const s = c.seed % 2 ? 1 : -1; o.pos.set(s * (3 + 1.5 * Math.sin(c.t * 0.08)), 2.6, 1.5 - c.t * 0.04); o.look.set(s * 9, 5.6, 10.5); } },
   { name: 'lounge', weight: 0.6, pose: (c, o) => { o.pos.set(-9.4, 2.3, 2.4 - 0.4 * Math.sin(c.t * 0.1)); o.look.set(-16, 0.9, -3); } },
   {
     name: 'user', weight: 2.5, needs: 'people', pose: (c, o) => {
@@ -86,9 +87,9 @@ export class CameraDirector {
 
   private choose() {
     const people = this.crowd.count > 0;
-    let stage = false, vip = false;
-    for (const d of this.crowd.dancers.values()) { if (d.m.zone === 'stage') stage = true; if (d.m.zone === 'vip') vip = true; }
-    const ok = SHOTS.filter((s) => s !== this.shot && (!s.needs || (s.needs === 'people' && people) || (s.needs === 'stage' && stage) || (s.needs === 'vip' && vip)));
+    let stage = false, vip = false, balcony = false;
+    for (const d of this.crowd.dancers.values()) { if (d.m.zone === 'stage') stage = true; if (d.m.zone === 'vip') vip = true; if (d.level === 1) balcony = true; }
+    const ok = SHOTS.filter((s) => s !== this.shot && (!s.needs || (s.needs === 'people' && people) || (s.needs === 'stage' && stage) || (s.needs === 'vip' && vip) || (s.needs === 'balcony' && balcony)));
     let total = 0;
     for (const s of ok) total += s.weight;
     let r = Math.random() * total;

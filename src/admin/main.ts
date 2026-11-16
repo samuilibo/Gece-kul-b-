@@ -121,7 +121,7 @@ function render() {
   <div class="row"><label>${t('lasers')}</label>${chk('ll', s.lights.lasers)}<label style="min-width:0">${t('strobe')}</label>${chk('ls', s.lights.strobe)}</div>
   <div class="row"><label>${t('mode')}</label><select id="lm">${['auto', 'neon', 'disco', 'techno', 'laser', 'warm', 'color', 'show'].map((v) => opt(v, v, s.lights.mode)).join('')}</select></div></section>
 <section><h2>${t('camera')}</h2><div class="row"><label>${t('auto')}</label>${chk('camAuto', s.cameraAuto)}<label style="min-width:0">${t('welcome')}</label>${chk('camWel', s.welcomeCamera)}</div>
-  <div class="grid2">${['auto', 'wide', 'dj', 'djback', 'crowd', 'top', 'vip', 'door', 'balcony', 'orbit', 'stage', 'lounge', 'user'].map((c) => `<button data-cam="${c}">${c}</button>`).join('')}</div></section>
+  <div class="grid2">${['auto', 'wide', 'dj', 'djback', 'crowd', 'top', 'vip', 'door', 'balcony', 'upper', 'orbit', 'stage', 'lounge', 'user'].map((c) => `<button data-cam="${c}">${c}</button>`).join('')}</div></section>
 <section><h2>${t('events')}</h2><div class="kv" id="evInfo"></div>
   <div class="row"><select id="evSel">${EVENTS.map((e) => opt(e.id, e.name[lang], state!.event.id)).join('')}</select><button class="pri" id="evGo">${t('startEvent')}</button><button id="evVote">${t('vote')}</button></div>
   <div class="row"><label>${t('eventMinutes')}</label><input type="number" id="evMin" min="1" max="120" value="${s.eventMinutes}"><label style="min-width:0">${t('autoVote')}</label>${chk('evAuto', s.eventVoting)}</div></section>

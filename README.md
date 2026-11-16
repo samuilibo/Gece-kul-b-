@@ -113,7 +113,8 @@ logged, so small gifts cannot spam effects. The on-stream banner always shows th
 
 | Turkish | English | Effect |
 | --- | --- | --- |
-| `!katıl` | `!join` | enter the club (one avatar per channel) |
+| `!katıl` | `!join` | enter the club (one avatar per channel); when it is full: join the door queue |
+| `!sıra` | `!queue` | show your place in the door queue on stream |
 | `!dans [tür]` | `!dance [style]` | random dance, or `hiphop`, `shuffle`, `break`, `robot`, `house`, `disco`, `techno`, `trance`, `slow`, `90s`… |
 | `!shuffle` `!breakdance` `!robot` | | dance styles |
 | `!zıpla` `!selam` `!alkış` | `!jump` `!wave` `!clap` | one-shot gestures |
@@ -132,11 +133,31 @@ Every command has a per-user cooldown and an on/off switch in the panel. Spam (r
 profanity in commands and inappropriate display names (replaced by `MisafirNNNN`) are filtered; add your own
 words with `BAD_WORDS` in `.env`. Blocked channels are stored in SQLite.
 
+## 4b. Capacity, balcony and the door queue
+
+* Up to **1510 avatars** (panel → *Max characters*). Places: ~270 roomy places on the LED floor (every dance), ~550
+  packed places around it and ~680 on the **balcony** (reached by the stairs on the south side), plus VIP, lounge and stage.
+  Packed places only use compact dances so neighbours never touch.
+* Only the ~50–220 viewers nearest the camera (depending on quality) are full skinned characters with name tags.
+  Everyone else is drawn by the **GPU crowd**: their dances are pre-baked into textures and each body type is one
+  instanced draw call. Clip timing uses the same beat clock, so switching between the two is invisible.
+* At most 40 people walk through the club at the same time; others wait outside the door for a moment.
+* **Door queue** when the club is full: `!join` puts you in line (first come, first served). Anyone who donates
+  while waiting (any platform) moves ahead of the free queue; supporters are ordered by the **total amount** they
+  donated while waiting (approximate value; YouTube uses its own tier table), earlier donors first on a tie. When a
+  place frees up the first person in line walks in. On stream a card shows *Club full · N/N*, how many wait, the
+  first five (★ = priority, with the amount in the platform's own unit) and how to join; joins, skips and `!queue`
+  answers appear as short notices.
+* Panel → Super Chat → *Door queue*: switch priority off, or let **one free viewer in after every N priority
+  entries** (default 0 = strictly by amount, as requested).
+* Please check each platform's rules on rewarding paid messages/gifts with perks before using priority on a
+  monetised stream; turning priority off keeps a plain first-come queue.
+
 ## 5. Super Chat, gifts, Bits, KICKs, memberships — support policy
 
-Principles: **thank people visibly, never sell gameplay.** Free viewers get every command and every area
-(VIP can also be opened to everyone). Nothing is random, nothing is a bet, there is no public money leaderboard
-and no "send X to unlock Y" goal, so nobody is pressured to pay.
+Principles: **thank people visibly; paid perks are cosmetic, plus queue priority only when the club is full.**
+Free viewers get every command and every area once inside (VIP can also be opened to everyone). Nothing is random, nothing is a bet, there is no public money leaderboard
+and no "send X to unlock Y" goal. The door-queue priority (section 4b) is the one exception and can be switched off.
 
 **Effect ladder** (YouTube tiers; other platforms are converted approximately, see 3b). Each step adds to the previous:
 

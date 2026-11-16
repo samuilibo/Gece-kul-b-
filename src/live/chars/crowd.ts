@@ -142,7 +142,8 @@ export class Crowd {
     ch.reset();
     ch.group.removeFromParent();
     const p = this.pool[d.look.arch];
-    if (p.length < 40) p.push(ch); else ch.dispose();
+    // small bounded pool: enough to swap heroes in and out without re-creating skeletons, never growing without limit
+    if (p.length < Math.ceil(this.engine.profile.heroes / this.arch.length) + 4) p.push(ch); else ch.dispose();
   }
 
   /** A viewer must be detailed while moving, gesturing, partnered or highlighted, and whenever the GPU crowd cannot draw it. */

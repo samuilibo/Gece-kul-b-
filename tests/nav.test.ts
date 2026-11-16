@@ -12,7 +12,7 @@ describe('navigation', () => {
     expect(standing.filter((s) => s.level === 1).length).toBeGreaterThan(500);
   });
 
-  it('reaches every place from the entrance (balcony via the stairs) without crossing obstacles or tall steps', () => {
+  it('reaches every place from the entrance (balcony via the stairs) without crossing obstacles or tall steps', { timeout: 60000 }, () => {
     for (const s of all) {
       const to = s.seat ? Nav.approach(s) : { x: s.x, z: s.z, l: s.level };
       const p = nav.findPath({ x: SPAWN.x, z: SPAWN.z, l: 0 }, to);

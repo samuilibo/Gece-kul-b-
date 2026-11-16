@@ -47,6 +47,17 @@ Hedef PC'de: `/live` OBS'de açıkken panel → *Benchmark çalıştır* veya `n
 * Ücretli mesajlarda link/@etiket/küfür filtresi; para sıralaması ve "şu kadar gönder" hedefi bilerek yok.
 * 8 yeni test (toplam 45) ve ekran görüntüsüyle toplu bant + atlama kontrolü.
 
+## Ek: 1500+ kapasite, balkon, kapı sırası
+
+* Balkon açıldı: merdiven + sahanlık, iki katlı yol bulma (A*, katlar arası geçiş sahanlıkta), ~680 balkon yeri.
+* Kapasite 1547 yer (1510 sınır): geniş pist, yoğun kalabalık (kompakt danslar), balkon, VIP, lounge, sahne.
+* GPU kalabalığı: LOD3 (~2 bin köşe) + pişirilmiş animasyon dokusu + görünüm dokusu; arketip başına 1 çizim.
+  Kameraya yakın 50–220 kişi tam karakter (havuzlanmış), kapıdan aynı anda en fazla 40 kişi geçer.
+* Kapı sırası: doluyken !katıl sıraya alır; bekleyen bağış yaparsa toplam miktara göre öne geçer; ekranda kart + bildirimler,
+  !sıra komutu, panelde öncelik kapatma ve "her N öncelikliden sonra 1 ücretsiz" ayarı.
+* Doğrulama: 1500 demo karakter tarayıcıda çalıştı (SwiftShader, FPS anlamsız), 50 test, duman testi (havuz sınırlı, kaynak artışı duruyor).
+  Hedef GPU'da 1500 kişilik FPS ölçülmedi → benchmark: `npm run benchmark -- 1500 high`.
+
 ## Bilinen sınırlamalar / yapılacaklar
 
 * Karakter kıyafetleri ve saçları prosedürel (CC0 taban mesh'in yardımcı geometrisinden); MakeHuman'ın

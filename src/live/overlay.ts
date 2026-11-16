@@ -1,13 +1,17 @@
-import { SOURCE_LABEL, type ClubEvent, type PublicState, type SupportEffect, type VoteState } from '../../shared/protocol.ts';
+import { SOURCE_LABEL, type ClubEvent, type PublicState, type QueueInfo, type SupportEffect, type VoteState } from '../../shared/protocol.ts';
 
 type Lang = 'tr' | 'en';
 const T = {
   tr: { inClub: 'KULÜPTE', now: 'ŞİMDİ ÇALIYOR', event: 'ETKİNLİK', next: 'SIRADAKİ', joined: 'kulübe katıldı', thanks: 'Teşekkürler', member: 'Yeni üye!', gift: 'Üyelik hediye etti!', combo: 'Destekleriniz için teşekkürler!',
     hint: '!katıl yazarak kulübe gir  ·  !dans  ·  !shuffle  ·  !robot  ·  !zıpla  ·  !selam  ·  !kıyafet  ·  !renk  ·  !müzik <tür>  ·  !help', vote: 'OYLAMA', voteSong: 'Müzik türü — !müzik <tür>', voteEvent: 'Sıradaki etkinlik — !etkinlik <no>',
-    demo: 'DEMO MODU · simüle edilmiş izleyiciler', audio: 'Sesi başlatmak için tıklayın', stopped: 'YAYIN DURAKLATILDI', sim: 'SİMÜLASYON', won: 'Kazanan' },
+    demo: 'DEMO MODU · simüle edilmiş izleyiciler',
+    qTitle: 'KAPI SIRASI', qFull: 'Kulüp dolu', qIn: 'Kulüpte', qWait: 'sırada', qPrio: 'öncelikli', qHint: '!katıl → sıraya gir · destek → öne geç · !sıra',
+    qJoined: 'sıraya girdi', qPriority: 'öne geçti', qPos: 'sıran', audio: 'Sesi başlatmak için tıklayın', stopped: 'YAYIN DURAKLATILDI', sim: 'SİMÜLASYON', won: 'Kazanan' },
   en: { inClub: 'IN THE CLUB', now: 'NOW PLAYING', event: 'EVENT', next: 'UP NEXT', joined: 'joined the club', thanks: 'Thank you', member: 'New member!', gift: 'Gifted memberships!', combo: 'Thank you for the support!',
     hint: 'Type !join to enter the club  ·  !dance  ·  !shuffle  ·  !robot  ·  !jump  ·  !wave  ·  !outfit  ·  !color  ·  !song <genre>  ·  !help', vote: 'VOTE', voteSong: 'Music genre — !song <genre>', voteEvent: 'Next event — !event <no>',
-    demo: 'DEMO MODE · simulated viewers', audio: 'Click to start audio', stopped: 'STREAM PAUSED', sim: 'SIMULATION', won: 'Winner' },
+    demo: 'DEMO MODE · simulated viewers',
+    qTitle: 'DOOR QUEUE', qFull: 'Club is full', qIn: 'In the club', qWait: 'waiting', qPrio: 'priority', qHint: '!join → get in line · support → skip ahead · !queue',
+    qJoined: 'joined the queue', qPriority: 'skipped ahead', qPos: 'your place', audio: 'Click to start audio', stopped: 'STREAM PAUSED', sim: 'SIMULATION', won: 'Winner' },
 };
 
 const el = (tag: string, cls = '', parent?: HTMLElement, text = '') => {
@@ -26,6 +30,7 @@ export class Overlay {
   private ev!: HTMLElement; private evLabel!: HTMLElement; private next!: HTMLElement; private nextLabel!: HTMLElement; private timer!: HTMLElement;
   private toasts!: HTMLElement; private banner!: HTMLElement; private voteBox!: HTMLElement; private hint!: HTMLElement; private notice!: HTMLElement;
   private demo!: HTMLElement; private audioHint!: HTMLElement; private curtain!: HTMLElement; private fadeEl!: HTMLElement;
+  private queueBox!: HTMLElement;
   private eventEndsAt = 0;
   private noticeTimer = 0;
   private bannerTimer = 0;
@@ -48,6 +53,7 @@ export class Overlay {
     const e2 = el('div', 'card dim', tr);
     this.nextLabel = el('small', '', e2); this.next = el('div', 'mid', e2);
     this.voteBox = el('div', 'card vote', tr);
+    this.queueBox = el('div', 'card queue', tr);
     const bl = el('div', 'hud bl', root);
     const np = el('div', 'card np', bl);
     el('div', 'eq', np).innerHTML = '<i></i><i></i><i></i><i></i>';
@@ -90,6 +96,34 @@ export class Overlay {
   tick(eventMinutes: number) {
     const left = Math.max(0, this.eventEndsAt - (Date.now() + this.clockSkew));
     (this.timer.firstChild as HTMLElement).style.width = `${Math.min(100, 100 - (left / (eventMinutes * 60000)) * 100)}%`;
+  }
+
+  /** Door queue card: only shown while somebody waits or the club is full. Amounts in the platform's own units. */
+  setQueue(q: QueueInfo | null | undefined) {
+    const t = T[this.lang];
+    if (!q || (q.size === 0 && q.members < q.capacity)) { this.queueBox.classList.remove('on'); return; }
+    this.queueBox.classList.add('on');
+    this.queueBox.replaceChildren();
+    el('small', '', this.queueBox, t.qTitle);
+    el('div', 'qhead', this.queueBox, `${q.members >= q.capacity ? t.qFull : t.qIn} · ${q.members}/${q.capacity}`);
+    if (q.size) el('div', 'qsub', this.queueBox, `${q.size} ${t.qWait}${q.priority ? ` · ${q.priority} ${t.qPrio}` : ''}`);
+    q.top.slice(0, 5).forEach((e, i) => {
+      const row = el('div', `qrow${e.priority ? ' prio' : ''}`, this.queueBox);
+      el('span', '', row, `${i + 1}. ${e.priority ? '★ ' : ''}${e.name}`);
+      if (e.amountText) el('b', '', row, e.amountText);
+    });
+    el('div', 'qhint', this.queueBox, t.qHint);
+  }
+
+  queueNotice(kind: 'joined' | 'priority' | 'position', name: string, position: number, size: number, amountText?: string) {
+    const t = T[this.lang];
+    if (kind === 'position') { this.showNotice(`${name}: ${t.qPos} #${position} / ${size}`, 6000); return; }
+    if (this.toasts.childElementCount >= 4) this.toasts.firstElementChild?.remove();
+    const el2 = el('div', `toast${kind === 'priority' ? ' prio' : ''}`, this.toasts);
+    el('b', '', el2, `${kind === 'priority' ? '★ ' : ''}${name}`);
+    el('span', '', el2, ` ${kind === 'priority' ? t.qPriority : t.qJoined} → #${position}${amountText ? ` (${amountText})` : ''}`);
+    setTimeout(() => el2.classList.add('out'), 3600);
+    setTimeout(() => el2.remove(), 4200);
   }
 
   toastJoin(name: string, demo: boolean) {

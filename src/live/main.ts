@@ -107,7 +107,7 @@ function onMessage(m: ServerMsg) {
       applySettings(m.state.settings);
       setEvent(m.state.event, m.state.nextEvent, m.state.eventEndsAt, false);
       crowd.sync(m.state.members);
-      overlay.setMode(m.state.mode); overlay.setVote(m.state.vote);
+      overlay.setMode(m.state.mode); overlay.setVote(m.state.vote); overlay.setQueue(m.state.queue);
       setEmergency(m.state.emergency);
       break;
     case 'join': crowd.join(m.member); overlay.toastJoin(m.member.name, m.member.source === 'demo'); if (settings?.welcomeCamera) director.welcome(m.member.id); break;
@@ -118,6 +118,8 @@ function onMessage(m: ServerMsg) {
     case 'effect': if (!emergency) runEffect(m.effect); break;
     case 'event': setEvent(m.event, m.next, m.endsAt, true); break;
     case 'vote': overlay.setVote(m.vote, m.winner); break;
+    case 'queue': overlay.setQueue(m.queue); if (state) state.queue = m.queue; break;
+    case 'queueNotice': overlay.queueNotice(m.kind, m.name, m.position, m.size, m.amountText); break;
     case 'settings': applySettings(m.settings); break;
     case 'mode': overlay.setMode(m.mode); if (state) state.mode = m.mode; break;
     case 'notice': overlay.showNotice(m.text[overlay.lang], m.kind === 'help' ? 12000 : 7000); break;
