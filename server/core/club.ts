@@ -282,6 +282,7 @@ export class ClubState {
   }
 
   private voteSong(id: string, arg: string, now: number, done: (r: string) => string): string {
+    if (this.settings.music.lock) return 'music-locked';            // the streamer fixed the music in the panel
     const g = GENRE_ALIASES[fold(arg).replace(/\s+/g, '')];
     if (!g) {
       this.send({ t: 'notice', kind: 'info', text: { tr: `Müzik oylaması: !müzik ${GENRES.join(' | ')}`, en: `Music vote: !song ${GENRES.join(' | ')}` } }, 'all');
@@ -586,7 +587,7 @@ export class ClubState {
     const top = [...v.options].sort((a, b) => b.count - a.count)[0];
     const winner = top && top.count > 0 ? top.key : undefined;
     this.send({ t: 'vote', vote: null, winner }, 'all');
-    if (v.kind === 'song' && winner) this.send({ t: 'music', cmd: 'genre', arg: winner }, 'all');
+    if (v.kind === 'song' && winner && !this.settings.music.lock) this.send({ t: 'music', cmd: 'genre', arg: winner }, 'all');
     if (v.kind === 'event') {
       if (winner) this.nextEvent = eventById(winner);
       this.setEvent((this.nextEvent ?? this.pickNext()).id, now);

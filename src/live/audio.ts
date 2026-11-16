@@ -193,7 +193,7 @@ export class AudioSystem {
   private analyser: AnalyserNode;
   private freq: Uint8Array<ArrayBuffer>;
   private deck: Deck | null = null;
-  private settings: MusicSettings = { volume: 0.8, shuffle: true, repeat: 'all', crossfade: 4, bpmOverride: 0, source: 'auto' };
+  private settings: MusicSettings = { volume: 0.8, shuffle: true, repeat: 'all', crossfade: 4, bpmOverride: 0, source: 'auto', lock: false };
   private flux: number[] = [];
   private prevLow = 0;
   private onsets: number[] = [];
@@ -266,6 +266,8 @@ export class AudioSystem {
   playGenre(genre: string) {
     const c = this.playlist.map((t, i) => ({ t, i })).filter((e) => e.t.genre === genre && e.i !== this.index);
     if (c.length) { this.play(c[Math.floor(Math.random() * c.length)].i); return; }
+    // "files only": never switch to the built-in synth, keep the current track
+    if (this.settings.source === 'files') return;
     // genre not on disk: fall back to the built-in generator for that genre
     if ((GENRES as readonly string[]).includes(genre)) {
       const p = PRESETS[genre as Genre];

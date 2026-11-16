@@ -30,6 +30,7 @@ const I18N: Record<string, [string, string]> = {
   music: ['Müzik', 'Music'], volume: ['Ses', 'Volume'], shuffle: ['Karıştır', 'Shuffle'], repeat: ['Tekrar', 'Repeat'], crossfade: ['Crossfade (sn)', 'Crossfade (s)'],
   bpm: ['BPM (0 = otomatik)', 'BPM (0 = auto)'], source: ['Kaynak', 'Source'], prev: ['Önceki', 'Prev'], next: ['Sonraki', 'Next'], toggle: ['Oynat/Durdur', 'Play/Pause'], rescan: ['Klasörü tara', 'Rescan folder'],
   genre: ['Tür çal', 'Play genre'], nowPlaying: ['Çalıyor', 'Now playing'], detected: ['algılanan', 'detected'],
+  musicLock: ['Müziği sabitle (etkinlik ve sohbet oylaması parçayı değiştirmesin)', 'Lock music (events and chat votes do not change the track)'],
   lights: ['Işıklar', 'Lights'], intensity: ['Yoğunluk', 'Intensity'], lasers: ['Lazerler', 'Lasers'], fog: ['Sis', 'Fog'], strobe: ['Flaş (yumuşak)', 'Strobe (soft)'], mode: ['Mod', 'Mode'],
   camera: ['Kamera', 'Camera'], auto: ['Otomatik', 'Auto'], welcome: ['Yeni gelen için giriş çekimi', 'Welcome shot for new arrivals'],
   events: ['Etkinlikler', 'Events'], current: ['Şu an', 'Current'], startEvent: ['Başlat', 'Start'], vote: ['Oylama başlat', 'Start vote'], eventMinutes: ['Etkinlik süresi (dk)', 'Event length (min)'], autoVote: ['Otomatik oylama', 'Automatic vote'],
@@ -113,6 +114,7 @@ function render() {
   <div class="row"><label>${t('bpm')}</label><input type="number" id="bpmO" min="0" max="200" step="0.5" value="${s.music.bpmOverride}"></div>
   <div class="row"><label>${t('shuffle')}</label>${chk('shuf', s.music.shuffle)}<label style="min-width:0">${t('repeat')}</label><select id="rep">${['off', 'all', 'one'].map((v) => opt(v, v, s.music.repeat)).join('')}</select>
     <label style="min-width:0">${t('source')}</label><select id="msrc">${['auto', 'files', 'builtin'].map((v) => opt(v, v, s.music.source)).join('')}</select></div>
+  <div class="row"><label style="min-width:0">${chk('mlock', s.music.lock)} ${t('musicLock')}</label></div>
   <div class="row"><label>${t('genre')}</label><select id="genre">${GENRES.map((g) => opt(g, GENRE_LABEL[g], '')).join('')}</select><button id="genreGo">▶</button></div>
   <div class="list" id="playlist" style="max-height:180px"></div></section>
 <section><h2>${t('lights')}</h2>
@@ -181,9 +183,9 @@ function bind() {
   };
   on('scOn', 'change', scUpd); on('scDur', 'change', scUpd); on('scCom', 'change', scUpd);
   for (const e of SC_EFFECTS) { on(`sc_on_${e}`, 'change', scUpd); on(`sc_t_${e}`, 'change', scUpd); }
-  const mUpd = () => { $('xfV').textContent = val('xf'); patch({ music: { volume: num('vol'), crossfade: num('xf'), bpmOverride: num('bpmO'), shuffle: checked('shuf'), repeat: val('rep') as Settings['music']['repeat'], source: val('msrc') as Settings['music']['source'] } }); };
+  const mUpd = () => { $('xfV').textContent = val('xf'); patch({ music: { volume: num('vol'), crossfade: num('xf'), bpmOverride: num('bpmO'), shuffle: checked('shuf'), repeat: val('rep') as Settings['music']['repeat'], source: val('msrc') as Settings['music']['source'], lock: checked('mlock') } }); };
   for (const id of ['vol', 'xf']) on(id, 'input', mUpd);
-  for (const id of ['bpmO', 'shuf', 'rep', 'msrc']) on(id, 'change', mUpd);
+  for (const id of ['bpmO', 'shuf', 'rep', 'msrc', 'mlock']) on(id, 'change', mUpd);
   on('mPrev', 'click', () => send({ t: 'music', cmd: 'prev' })); on('mNext', 'click', () => send({ t: 'music', cmd: 'next' }));
   on('mToggle', 'click', () => send({ t: 'music', cmd: 'toggle' })); on('mRescan', 'click', () => send({ t: 'music', cmd: 'rescan' }));
   on('genreGo', 'click', () => send({ t: 'music', cmd: 'genre', arg: val('genre') }));

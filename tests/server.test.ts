@@ -279,3 +279,16 @@ describe('youtube connector (mocked API)', () => {
     expect(h.events[0].historical).toBe(false);
   });
 });
+
+describe('music lock', () => {
+  it('keeps the streamer\'s track: no music votes and no genre change while locked', () => {
+    const sent: ServerMsg[] = [];
+    const c = new ClubState(new Db(':memory:'), (m) => sent.push(m), () => {}, { now: 0 });
+    c.setMode('live');
+    c.patchSettings({ music: { ...c.settings.music, lock: true } });
+    const r = c.handleChat({ id: 'v1', source: 'youtube', ts: 0, author: { id: 'UC_v', name: 'v' }, kind: 'text', text: '!müzik techno' }, 0);
+    expect(r).toBe('music-locked');
+    c.tick(60000);
+    expect(sent.some((m) => m.t === 'music')).toBe(false);
+  });
+});

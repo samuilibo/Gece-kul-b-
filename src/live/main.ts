@@ -75,7 +75,7 @@ function setEvent(ev: typeof event, next: typeof event | null, endsAt: number, a
   overlay.setEvent(ev, next, endsAt);
   if (state) { state.event = ev; state.nextEvent = next; state.eventEndsAt = endsAt; }
   if (changed && announce) {
-    audio.playGenre(ev.genre);
+    if (!settings?.music.lock) audio.playGenre(ev.genre);    // "lock music" keeps the streamer's track
     club.djMessage([ev.name[overlay.lang]], 6, now);
     club.lightShow(4, now);
     if (ev.special === 'djshow') director.request('dj', null, 10);
