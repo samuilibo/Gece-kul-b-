@@ -318,6 +318,7 @@ npm test             # unit tests (commands, moderation, queue, support policy, 
 npm run smoke        # headless end-to-end run (demo crowd, effects, events, resource-leak check)
 npm run benchmark    # measured FPS on this PC (needs /live open)
 npm run typecheck
+node tools/screenshots.mjs club|full|extra   # re-render the 4K README screenshots (server must run)
 ```
 
 Animation test page: `http://localhost:3000/viewer?clip=shuffle_run&n=6`

@@ -4,7 +4,7 @@
 //   part = club | full | extra      (screens are written to docs/screenshots/)
 // Uses demo mode only: every avatar is a labelled simulated viewer.
 import { createRequire } from 'node:module';
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 const req = createRequire(import.meta.url);
 const { chromium } = req('playwright'); const { WebSocket } = req('ws');
 const part = process.argv[2] ?? 'club', port = process.argv[3] ?? '3000', base = `http://127.0.0.1:${port}`;
@@ -18,6 +18,7 @@ const cmds = { ...snap.state.settings.commands, camera: { on: false, cooldown: 6
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 // software rendering in CI / headless containers is slow at 4K: allow a long time per frame
 const shot4k = async (p, name) => {
+  if (process.env.SKIP_EXISTING && existsSync(`${OUT}/${name}.jpg`)) { console.log('skip', name); return; }
   await p.evaluate(() => { const e = window.__club.engine; e.scale = 2; e.resize(); });
   await p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
   await shotJpg(p, name);
@@ -29,7 +30,7 @@ async function livePage(w, h, extra = '') {
   const p = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 2 });
   p.setDefaultTimeout(600000);
   p.on('pageerror', (e) => console.log('[pageerror]', e.message));
-  await p.goto(`${base}/live?fixedres&quality=high${extra}`);
+  await p.goto(`${base}/live?fixedres&quality=${process.env.SHOT_QUALITY ?? 'high'}${extra}`);
   await p.waitForFunction(() => document.title.startsWith('ready'), null, { timeout: 300000 });
   await p.waitForFunction(() => window.__club.crowd.gpu.ready, null, { timeout: 300000 });
   return p;
@@ -58,10 +59,15 @@ if (part === 'club') {
   if (id) A({ t: 'camera', shot: 'user', target: id });
   await wait(4500); await shot4k(p, 'supporter-closeup');
   A({ t: 'settings', patch: { cameraAuto: false } });
-  A({ t: 'event', id: 'retro' }); await cam('top', 10000); await shot4k(p, 'retro-disco-top');
-  A({ t: 'event', id: 'rooftop' }); await cam('balcony', 10000); await shot4k(p, 'rooftop-party');
-  A({ t: 'event', id: 'laser' }); await cam('djback', 10000); await shot4k(p, 'laser-show');
   await p.close();
+  // each event shot on a fresh page: repeated 4K buffer re-allocation in one page is unreliable with software rendering
+  for (const [ev, shot, name] of [['retro', 'top', 'retro-disco-top'], ['rooftop', 'balcony', 'rooftop-party'], ['laser', 'djback', 'laser-show']]) {
+    if (process.env.SKIP_EXISTING && existsSync(`${OUT}/${name}.jpg`)) { console.log('skip', name); continue; }
+    A({ t: 'event', id: ev }); A({ t: 'camera', shot });
+    const q = await livePage(1920, 1080);
+    await wait(10000); await shot4k(q, name);
+    await q.close();
+  }
 }
 if (part === 'full') {
   A({ t: 'event', id: 'neon' });

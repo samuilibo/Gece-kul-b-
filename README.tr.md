@@ -317,6 +317,7 @@ npm test             # birim testleri (komutlar, moderasyon, sıra, destek polit
 npm run smoke        # tarayıcısız uçtan uca test (demo kalabalık, efektler, etkinlikler, kaynak sızıntısı kontrolü)
 npm run benchmark    # bu bilgisayarda ölçülen FPS (/live açık olmalı)
 npm run typecheck
+node tools/screenshots.mjs club|full|extra   # README'deki 4K ekran görüntülerini yeniden üret (sunucu açık olmalı)
 ```
 
 Animasyon test sayfası: `http://localhost:3000/viewer?clip=shuffle_run&n=6`
