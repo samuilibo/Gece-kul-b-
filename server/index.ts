@@ -147,7 +147,7 @@ async function onAdmin(msg: AdminMsg) {
     case 'demo':
       // Simulated viewers are only ever created while no real stream is connected.
       if (anyLive() || club.mode === 'live') { log('warn', 'demo', 'demo refused: a real stream is connected'); break; }
-      if (msg.cmd === 'start') demo.start(msg.count ?? 10);
+      if (msg.cmd === 'start') { demo.autoSuperchat = msg.autoSupport !== false; demo.start(msg.count ?? 10); }
       else if (msg.cmd === 'stop') demo.stop();
       else if (!demo.running) break;
       else if (msg.cmd === 'add') demo.add(msg.count ?? 10);

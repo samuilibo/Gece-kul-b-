@@ -7,7 +7,27 @@ const LAST = ['Yıldız', 'Dalga', 'Beat', 'Neon', 'Ritim', 'Gece', 'Wave', 'Bas
 const ACTIONS = ['!dance', '!dans', '!shuffle', '!robot', '!breakdance', '!jump', '!zıpla', '!wave', '!selam', '!clap', '!outfit', '!kıyafet',
   '!color', '!renk', '!dance', '!dans', '!dance', '!sit', '!pist', '!vip', '!stage', '!sahne', '!camera', '!help'];
 const SMALLTALK = ['bu şarkı çok iyi 🔥', 'selam herkese', 'DJ harika', 'nice drop!', 'hello from Berlin', 'kim var burada?', 'lights are insane'];
-const AMOUNTS = ['₺20,00', '₺50,00', '$5.00', '€10,00', '₺100,00', '$20.00', '₺250,00', '£50.00', '$100.00', '₺1.000,00', '$500.00'];
+// Simulated amounts that really belong to each YouTube tier (tier 1 ≈ $1, 2 ≈ $2, 3 ≈ $5, 4 ≈ $10, 5 ≈ $20, 6 ≈ $50,
+// 7 ≈ $100, 8 ≈ $200, 9 ≈ $300, 10 ≈ $400, 11 ≈ $500). Lira values stay inside the tier for 35–60 TRY per USD;
+// above tier 7 the bands are too narrow for an uncertain exchange rate, so only USD / EUR are simulated there.
+export const DEMO_AMOUNTS: { usd: string; eur: string; try: string }[] = [
+  { usd: '$1.50', eur: '€1,50', try: '₺60,00' },
+  { usd: '$3.00', eur: '€3,00', try: '₺150,00' },
+  { usd: '$7.00', eur: '€7,00', try: '₺320,00' },
+  { usd: '$15.00', eur: '€14,00', try: '₺650,00' },
+  { usd: '$30.00', eur: '€28,00', try: '₺1.500,00' },
+  { usd: '$75.00', eur: '€70,00', try: '₺3.300,00' },
+  { usd: '$150.00', eur: '€140,00', try: '₺6.500,00' },
+  { usd: '$250.00', eur: '€230,00', try: '' },
+  { usd: '$350.00', eur: '€320,00', try: '' },
+  { usd: '$450.00', eur: '€410,00', try: '' },
+  { usd: '$500.00', eur: '€500,00', try: '' },
+];
+export function demoAmount(tier: number, r = Math.random()) {
+  const row = DEMO_AMOUNTS[Math.max(1, Math.min(11, tier)) - 1];
+  if (!row.try) return r < 0.6 ? row.usd : row.eur;
+  return r < 0.5 ? row.try : r < 0.8 ? row.usd : row.eur;
+}
 
 /**
  * Simulation feed. Everything produced here carries source: 'demo' and ids prefixed
@@ -65,10 +85,11 @@ export class DemoDriver {
   superchat(tier = 0, botIndex = -1) {
     if (!this.bots.length) return;
     const bot = this.bots[botIndex >= 0 ? botIndex % this.bots.length : Math.floor(Math.random() * this.bots.length)];
-    const t = tier || 1 + Math.floor(Math.random() * 7);
-    const r = Math.random();
+    // an explicit tier (panel button) is always a Super Chat; random ones also simulate stickers and memberships
+    const r = tier ? 0 : Math.random();
     const kind: ChatEvent['kind'] = r < 0.7 ? 'superchat' : r < 0.85 ? 'sticker' : 'member';
-    this.say(bot, kind === 'member' ? 'Neon Üye' : 'Harika yayın! 🎉', { kind, tier: t, amountText: kind === 'member' ? '' : AMOUNTS[Math.min(AMOUNTS.length - 1, t - 1)] });
+    const t = kind === 'member' ? 3 : tier || 1 + Math.floor(Math.random() * 7);     // memberships are tier 3 like on YouTube
+    this.say(bot, kind === 'member' ? 'Neon Üye' : 'Harika yayın! 🎉', { kind, tier: t, amountText: kind === 'member' ? '' : demoAmount(t) });
   }
 
   /** Simulated connection loss: the feed stops for `ms`, then resumes. */

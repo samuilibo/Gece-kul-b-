@@ -212,7 +212,7 @@ export type AdminMsg =
   | { t: 'kick'; id: string }
   | { t: 'block'; id: string }
   | { t: 'unblock'; id: string }
-  | { t: 'demo'; cmd: 'start' | 'stop' | 'add' | 'chat' | 'superchat' | 'disconnectTest' | 'load'; count?: number; text?: string; tier?: number }
+  | { t: 'demo'; cmd: 'start' | 'stop' | 'add' | 'chat' | 'superchat' | 'disconnectTest' | 'load'; count?: number; text?: string; tier?: number; autoSupport?: boolean }
   | { t: 'music'; cmd: 'next' | 'prev' | 'toggle' | 'genre' | 'play' | 'rescan'; arg?: string }
   | { t: 'camera'; shot: string; target?: string }
   | { t: 'event'; id: string }

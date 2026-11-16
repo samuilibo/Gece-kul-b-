@@ -94,3 +94,17 @@ describe('support policy', () => {
     expect(c.members.get('tt:11')!.vip).toBe(true);
   });
 });
+
+describe('demo amounts', () => {
+  it('match the tier they claim, for USD, EUR (0.85–1.0 USD) and TRY (35–60 per USD)', async () => {
+    const { DEMO_AMOUNTS } = await import('../server/core/demo.ts');
+    const lo = [1, 2, 5, 10, 20, 50, 100, 200, 300, 400, 500], hi = [2, 5, 10, 20, 50, 100, 200, 300, 400, 500, 1e9];
+    const num = (s: string) => Number(s.replace(/[^\d,.]/g, '').replace(/\.(?=\d{3}\b)/g, '').replace(',', '.'));
+    DEMO_AMOUNTS.forEach((a, i) => {
+      const usd = num(a.usd), eur = num(a.eur), tr = num(a.try);
+      expect(usd >= lo[i] && usd < hi[i], a.usd).toBe(true);
+      for (const k of [1.0, 1.18]) expect(eur * k >= lo[i] && eur * k < hi[i], `${a.eur} x${k}`).toBe(true);
+      if (a.try) for (const rate of [35, 60]) expect(tr / rate >= lo[i] && tr / rate < hi[i], `${a.try} @${rate}`).toBe(true);
+    });
+  });
+});
