@@ -218,9 +218,11 @@ function awaitDefault(): Settings { throw new Error('offline mode needs a snapsh
 connect();
 
 // audio needs a gesture in a normal browser tab; OBS and the kiosk launcher allow autoplay
+// On touch screens only touchend / pointerup / click count as a user gesture (pointerdown does not).
+// iOS: 'playback' keeps Web Audio audible even when the ring/silent switch is on.
+try { (navigator as unknown as { audioSession?: { type: string } }).audioSession!.type = 'playback'; } catch { /* not supported */ }
 const unlock = () => { void audio.resume(); };
-addEventListener('pointerdown', unlock);
-addEventListener('keydown', unlock);
+for (const ev of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) addEventListener(ev, unlock);
 
 const clock = new THREE.Timer();
 let now = 0, secAcc = 0, frames = 0;

@@ -218,7 +218,10 @@ export class AudioSystem {
   }
 
   get suspended() { return this.ctx.state !== 'running'; }
-  async resume() { try { await this.ctx.resume(); } catch { /* needs a user gesture outside OBS */ } }
+  async resume() {
+    if (this.playing && this.deck?.el?.paused) void this.deck.el.play().catch(() => { /* still blocked */ });
+    try { await this.ctx.resume(); } catch { /* needs a user gesture outside OBS */ }
+  }
 
   async loadPlaylist() {
     let files: { file: string; title: string; genre: string }[] = [];
