@@ -7,7 +7,7 @@ import {
 type Lang = 'tr' | 'en';
 const I18N: Record<string, [string, string]> = {
   youtube: ['YouTube bağlantısı', 'YouTube connection'], url: ['Yayın URL’si', 'Stream URL'], connect: ['Bağlan', 'Connect'], disconnect: ['Bağlantıyı kes', 'Disconnect'],
-  creds: ['Kimlik bilgileri', 'Credentials'], apiKey: ['API anahtarı', 'API key'], oauth: ['OAuth', 'OAuth'], set: ['tanımlı', 'set'], notSet: ['tanımlı değil', 'not set'],
+  creds: ['Kimlik bilgileri', 'Credentials'], minPoll: ['Min. sorgu aralığı (ms)', 'Min poll interval (ms)'], apiKey: ['API anahtarı', 'API key'], oauth: ['OAuth', 'OAuth'], set: ['tanımlı', 'set'], notSet: ['tanımlı değil', 'not set'],
   credHelp: ['Anahtarlar yalnızca sunucudaki .env dosyasında tutulur ve tarayıcıya hiç gönderilmez. Değiştirmek için .env dosyasını düzenleyip sunucuyu yeniden başlatın.', 'Keys live only in the server-side .env file and are never sent to the browser. Edit .env and restart the server to change them.'],
   state: ['Durum', 'State'], transport: ['Aktarım', 'Transport'], video: ['Video', 'Video'], quota: ['Kullanılan kota (birim)', 'Quota used (units)'], msgs: ['İşlenen mesaj', 'Messages'],
   ytViewers: ['YouTube izleyici (API)', 'YouTube viewers (API)'], inClub: ['Kulüpteki karakter', 'Avatars in club'],
@@ -61,6 +61,7 @@ function render() {
 <section><h2>${t('youtube')}</h2>
   <div class="row"><input type="text" id="ytUrl" placeholder="https://www.youtube.com/watch?v=… / youtu.be/…" value="${esc(localStorage.getItem('nc-url') ?? '')}"></div>
   <div class="row"><button class="pri" id="ytConnect">${t('connect')}</button><button id="ytDisconnect">${t('disconnect')}</button></div>
+  <div class="row"><label>${t('minPoll')}</label><input type="number" id="minPoll" min="1000" max="60000" step="500" value="${s.minPollMs}"></div>
   <div class="kv" id="ytInfo"></div>
   <h2 style="margin-top:12px">${t('creds')}</h2><div class="kv" id="credInfo"></div><p class="mut">${t('credHelp')}</p>
 </section>
@@ -128,6 +129,7 @@ function bind() {
   on('ytConnect', 'click', () => { localStorage.setItem('nc-url', val('ytUrl')); send({ t: 'connect', url: val('ytUrl') }); });
   on('ytDisconnect', 'click', () => send({ t: 'disconnect' }));
   on('maxChars', 'change', () => patch({ maxCharacters: num('maxChars') }));
+  on('minPoll', 'change', () => patch({ minPollMs: Math.max(1000, num('minPoll')) }));
   for (const c of COMMANDS) {
     const upd = () => patch({ commands: { ...state!.settings.commands, [c]: { on: checked(`cmd_on_${c}`), cooldown: num(`cmd_cd_${c}`) } } });
     on(`cmd_on_${c}`, 'change', upd); on(`cmd_cd_${c}`, 'change', upd);

@@ -9,7 +9,7 @@ interface Shot { name: string; weight: number; needs?: 'people' | 'stage' | 'vip
 const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 const SHOTS: Shot[] = [
   { name: 'wide', weight: 3, pose: (c, o) => { o.pos.set(Math.sin(c.t * 0.11 + c.seed) * 2.2, 3.5 - 0.3 * Math.sin(c.t * 0.07), 8.4 - c.t * 0.05); o.look.set(0, 1.9, -6.5); } },
-  { name: 'dj', weight: 2, pose: (c, o) => { o.pos.set(Math.sin(c.t * 0.16 + c.seed) * 2.6, STAGE.y + 1.55 + 0.15 * Math.sin(c.t * 0.2), -7.6 + 0.4 * Math.cos(c.t * 0.13)); o.look.set(DJ.x, STAGE.y + 1.45, DJ.z); } },
+  { name: 'dj', weight: 2, pose: (c, o) => { o.pos.set(Math.sin(c.t * 0.16 + c.seed) * 1.6, STAGE.y + 1.75 + 0.1 * Math.sin(c.t * 0.2), -8.7 + 0.3 * Math.cos(c.t * 0.13)); o.look.set(DJ.x, STAGE.y + 1.35, DJ.z); } },
   { name: 'djback', weight: 2, pose: (c, o) => { o.pos.set(1.6 * Math.sin(c.t * 0.12 + c.seed), STAGE.y + 2.5, -13.1); o.look.set(0, 1.0, -3); } },
   { name: 'crowd', weight: 3, needs: 'people', pose: (c, o) => { const s = (c.seed % 2 ? 1 : -1), x = s * (-6.5 + (c.t * 0.55) % 13); o.pos.set(x, 2.3, 2.6); o.look.set(x * 0.4, 1.35, -5); } },
   { name: 'top', weight: 1.5, pose: (c, o) => { const a = c.t * 0.1 + c.seed; o.pos.set(Math.sin(a) * 1.8, 8.4, -2.3 + Math.cos(a) * 1.8); o.look.set(0, 0, -2.5); } },

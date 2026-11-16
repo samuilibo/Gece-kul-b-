@@ -339,7 +339,7 @@ export class Crowd {
       this.sorted.sort((x, y) => x.dist - y.dist);
       for (const d of this.dancers.values()) if (d.ch.tag) d.ch.tag.visible = false;
       const n = Math.min(prof.nameTags, this.sorted.length);
-      for (let j = 0; j < n; j++) { const tg = this.sorted[j].ch.tag; if (tg && this.sorted[j].dist < 32 && this.sorted[j].dist > 1.2) tg.visible = true; }
+      for (let j = 0; j < n; j++) { const tg = this.sorted[j].ch.tag; if (tg && this.sorted[j].dist < 32 && this.sorted[j].dist > 3.2) tg.visible = true; }
     }
   }
 

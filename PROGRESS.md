@@ -1,24 +1,73 @@
-# NEON CLUB LIVE — İlerleme
+# NEON CLUB LIVE — İlerleme / Progress
 
-Durum işaretleri: ✅ tamamlandı ve çalıştırılarak doğrulandı · 🟡 yazıldı, kısmen doğrulandı · ⬜ başlanmadı
+✅ yazıldı ve bu ortamda çalıştırılarak doğrulandı · 🟡 yazıldı, kısmen doğrulandı · ⬜ yapılmadı
 
 | Aşama | Kapsam | Durum |
 | --- | --- | --- |
-| 0 | PROGRESS.md, ARCHITECTURE.md, varlık araştırması | 🟡 |
-| 1 | Proje altyapısı, Three.js sahnesi, kulüp ortamı | ⬜ |
-| 2 | Rig'li karakterler, animasyonlar, navigasyon | ⬜ |
-| 3 | Müzik oynatıcı, BPM analizi, ışık senkronu | ⬜ |
-| 4 | Kamera yönetmeni, dinamik etkinlikler | ⬜ |
-| 5 | YouTube canlı sohbet entegrasyonu | ⬜ |
-| 6 | Super Chat sistemi, yönetim paneli | ⬜ |
-| 7 | OBS, performans optimizasyonu, testler | ⬜ |
+| 0 | PROGRESS.md, ARCHITECTURE.md, varlık araştırması | ✅ |
+| 1 | Altyapı (Vite + TS + Node), Three.js sahnesi, kulüp ortamı | ✅ |
+| 2 | Rig'li karakterler, 37 animasyon, IK, navigasyon + slot rezervasyonu | ✅ |
+| 3 | Müzik oynatıcı, analiz (bass/mid/treble/spektrum/beat/BPM), ışık senkronu | ✅ (yerel dosya BPM tespiti gerçek müzikle test edilmedi) |
+| 4 | Kamera yönetmeni (12 çekim), dinamik etkinlikler (10), oylamalar | ✅ |
+| 5 | YouTube canlı sohbet (videos.list, streamList gRPC, list polling) | 🟡 mock testli; gerçek yayına karşı denenemedi |
+| 6 | Super Chat sistemi, yönetim paneli (TR/EN) | ✅ (gerçek Super Chat olayı yalnızca mock ile) |
+| 7 | OBS, performans, testler, betikler, lisanslar | 🟡 hedef GPU'da benchmark kullanıcı tarafından çalıştırılmalı |
+
+## Doğrulama (bu geliştirme ortamında, GPU yok — SwiftShader yazılım render)
+
+* `npm test` → 27/27 test geçti: komut ayrıştırma (TR/EN), moderasyon, mesaj tekilleştirme, kanal kimliği,
+  bekleme süreleri, kapasite, VIP/sahne, Super Chat kuyruğu + tarihî mesaj koruması, demo/canlı ayrımı,
+  oylama, duo, engelleme, acil durdurma, URL → video id, REST/gRPC normalizasyon, mock API ile
+  `pollingIntervalMillis`, `nextPageToken` devamı, exponential backoff, kota/sohbet kapalı/yayın bitti durumları,
+  navigasyon (300+ slot, tüm slotlara erişim, basamak/engel kontrolü, 0.9 m slot aralığı).
+* `npm run smoke` (50 ve 100 karakter) → geçti: tüm karakterler kapıdan girip dans ediyor, ayrılınca kapıdan
+  çıkıyor; Super Chat, etkinlik değişimi, oylama, bağlantı kopma simülasyonu, kalite değişimi hatasız;
+  iki boş-kulüp anında GPU kaynakları aynı (195 geometri / 31 doku) → sızıntı yok.
+* `npm run build` → üretim derlemesi başarılı; `npm start` üretim sunucusu ile smoke testi çalıştı.
+* Ekran görüntüleriyle kontrol edilen: geniş açı, DJ yakın çekim, kullanıcı yakın çekim, yörünge, balkon,
+  Rooftop/Retro/Techno etkinlikleri, Super Chat efektleri, 1080×1920 dikey yerleşim, yönetim paneli.
+
+**FPS iddiası yok.** SwiftShader (CPU) ile ölçülen 1–15 FPS hedef bilgisayar hakkında bilgi vermez.
+Hedef PC'de: `/live` OBS'de açıkken panel → *Benchmark çalıştır* veya `npm run benchmark -- 100 high`.
+
+## Bilinen sınırlamalar / yapılacaklar
+
+* Karakter kıyafetleri ve saçları prosedürel (CC0 taban mesh'in yardımcı geometrisinden); MakeHuman'ın
+  dokulu kıyafet/saç paketine bu ortamdan erişilemedi. Daha gerçekçi görünüm için CC0/CC-BY lisanslı,
+  aynı `game_engine` iskeletine uyan kıyafet modelleri eklenebilir (ASSET_LICENSES.md'ye yazılarak).
+* Cilt/yüz dokusu yok (renk + dudak/kaş/sakal maskesi). Yüz morph'ları ile 8 vücut tipi × renk/kıyafet
+  kombinasyonları üretiliyor.
+* Profil fotoğrafı yalnızca Google görsel sunucularından (ggpht / googleusercontent) proxy'leniyor.
+* `streamList` gRPC yolu gerçek YouTube'a karşı denenemedi (ortamda ağ/anahtar yok); hata verirse otomatik
+  olarak polling'e geçiyor.
+* KTX2 / doku atlası kullanılmıyor (mevcut varlıklar tek 1024² maske + prosedürel dokular kullanıyor).
+* VRAM kullanımı tarayıcı tarafından açığa çıkarılmadığı için kaynak sayısı olarak raporlanıyor.
 
 ## Günlük
 
 ### Aşama 0
-- Depo boştu; sıfırdan başlandı.
-- Karakter varlığı araştırması: bu ortamdan Quaternius, Poly Pizza, Kenney, Sketchfab,
-  Poly Haven vb. sitelere erişim yok. Erişilebilen ve lisansı net tek gerçekçi insan kaynağı
-  **MakeHuman / MPFB2 (CC0)**: taban mesh, `game_engine` iskeleti, ağırlıklar, morph hedefleri.
-  MakeHuman'in hazır saç/kıyafet/cilt doku paketleri (ayrı LFS deposu) erişilemedi; bu yüzden
-  kıyafet ve saçlar taban mesh'in yardımcı geometrilerinden üretim hattında türetilecek.
+- Depo boştu; sıfırdan başlandı. Erişilebilen ve lisansı net tek gerçekçi insan kaynağı MakeHuman/MPFB2 (CC0).
+
+### Aşama 1
+- Vite + TypeScript + Node sunucu; kulüp: LED duvar (shader, 7 desen), LED dans pisti, DJ kabini, VIP, lounge,
+  bar, giriş + kırmızı halı, neon tabelalar, balkon + cam korkuluk, hoparlörler, disko topları + yansıyan
+  ışık lekeleri, lazerler, hareketli spotlar, sis, parlak zemin, bloom/ton eşleme/vinyet, kalite profilleri.
+
+### Aşama 2
+- `tools/build_characters.py`: 8 arketip (4 kadın, 4 erkek, farklı ten/vücut/yüz), 3 LOD, 46 giyilebilir parça.
+- IK tabanlı prosedürel animasyon: 22 dans + 2 grup koreografisi + duo + yürüme/koşma/oturma/jestler + 3 DJ hareketi.
+- A* navigasyon (merdiven yükseklik kontrolü), slot/koltuk rezervasyonu, yerel kaçınma, takılma kurtarma.
+- Hata düzeltmeleri: bloom'a yayılan NaN (sıfır normaller) → normaller düzeltildi + koruyucu geçiş;
+  A* Float32 yuvarlama hatası; mobilya arasında kalan koltuklar otomatik eleniyor.
+
+### Aşama 3–4
+- Web Audio oynatıcı + crossfade + analiz; yerleşik özgün synth (9 tür); ışıklar/LED/lazer vuruşa bağlı.
+- Kamera yönetmeni (geçişlerde kısa karartma, çarpışma kısıtları), 10 etkinlik + sohbet oylaması.
+
+### Aşama 5–6
+- YouTube bağlayıcı (gRPC streamList + polling yedeği, backoff, kota, token kalıcılığı), SQLite.
+- Super Chat efekt kuyruğu, TR/EN yönetim paneli, demo sürücüsü.
+
+### Aşama 7
+- Benchmark (gerçek ölçüm), smoke testi, setup.bat / start.bat / live-window.bat / setup.sh, OAuth yardımcı betiği,
+  README (OBS + ses yakalama), ASSET_LICENSES.md, LICENSE.

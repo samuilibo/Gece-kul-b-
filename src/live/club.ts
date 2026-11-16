@@ -358,7 +358,7 @@ export class Club {
       if (rest > 0.05) this.box(s.x1 - s.x0, s.top, rest, dark, (s.x0 + s.x1) / 2, s.top / 2, s.z0 + rest / 2).receiveShadow = true;
     }
     // main LED wall + mirrored copy under the floor
-    const wall = this.ledPlane(16, 6, [96, 36], 1, 1.25, 'wall');
+    const wall = this.ledPlane(16, 6, [96, 36], 1, 0.8, 'wall');
     wall.position.set(0, 4.5, -ROOM.hz + 0.2);
     this.group.add(wall);
     const mirror = new THREE.Mesh(wall.geometry, wall.material);
@@ -724,7 +724,7 @@ export class Club {
     const vu = this.engine.vignette.uniforms.flash;
     vu.value = Math.max(flash, vu.value * Math.exp(-dt * 9));
     this.key.intensity = 190 * (0.55 + 0.45 * mode.ambient) * s.intensity;
-    this.engine.bloom.strength = 0.72 + (show ? 0.2 : 0) + 0.1 * kick;
+    this.engine.bloom.strength = 0.58 + (show ? 0.15 : 0) + 0.08 * kick;
     const fogK = s.fog;
     (this.engine.scene.fog as THREE.FogExp2).density = 0.006 + 0.012 * fogK;
     (this.engine.scene.fog as THREE.FogExp2).color.copy(this.ambientTint).multiplyScalar(0.09);
@@ -748,7 +748,7 @@ export class Club {
     // follow spot
     const fp = t < this.followUntil ? this.followPos?.() : null;
     this.follow.mesh.visible = !!fp;
-    if (fp) { this.follow.target.lerp(this.tmpV.copy(fp).setY(fp.y), Math.min(1, dt * 6)); this.aim(this.follow, this.tmpC.set(0xffe9b0), 1.5, 0.035, 620); }
+    if (fp) { this.follow.target.lerp(this.tmpV.copy(fp).setY(fp.y), Math.min(1, dt * 6)); this.aim(this.follow, this.tmpC.set(0xffe9b0), 1.3, 0.035, 200); }
     else if (this.follow.light) this.follow.light.intensity = 0;
 
     // lasers
@@ -812,7 +812,7 @@ export class Club {
     if (this.envDirty) { this.envDirty = false; this.bakeEnv(); }
   }
 
-  private aim(b: Beam, color: THREE.Color, power: number, widthK: number, lightPower = 260) {
+  private aim(b: Beam, color: THREE.Color, power: number, widthK: number, lightPower = 85) {
     const dist = b.origin.distanceTo(b.target);
     b.mesh.lookAt(b.target);
     b.mesh.scale.set(dist * widthK * 2.2 + 0.2, dist * widthK * 2.2 + 0.2, dist);
