@@ -671,6 +671,8 @@ def write_glb(path, a, bones, lods, landmarks):
     for li, sources in enumerate(lods):
         P = np.concatenate([s.P for s in sources]).astype(np.float32)
         N = np.concatenate([s.N for s in sources]).astype(np.float32)
+        bad = np.linalg.norm(N, axis=1) < 1e-6
+        N[bad] = (0.0, 1.0, 0.0)                     # degenerate (collapsed) vertices: avoid NaN shading
         UV = np.concatenate([s.UV for s in sources]).astype(np.float32)
         Jn = np.concatenate([s.J for s in sources]).astype(np.uint8)
         Wn = np.concatenate([s.W for s in sources]).astype(np.float32)

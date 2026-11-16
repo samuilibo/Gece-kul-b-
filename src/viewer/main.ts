@@ -1,40 +1,62 @@
-// Debug viewer (stage 0): shows raw parts of a character GLB.
+// Character / animation test page: /viewer?clip=shuffle_run&seed=5&n=6
+// Shows generated characters playing any clip of the motion library (used for animation tests).
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { loadArchetypes } from '../live/chars/assets.ts';
+import { Character } from '../live/chars/character.ts';
+import { CLIPS } from '../live/chars/dances.ts';
+import { makeLook } from '../live/chars/look.ts';
+import { charGlobals, loadCharTextures } from '../live/chars/material.ts';
+
 const q = new URLSearchParams(location.search);
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
 document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
-scene.add(new THREE.HemisphereLight(0xffffff, 0x333344, 1.6));
-const dl = new THREE.DirectionalLight(0xffffff, 2); dl.position.set(1, 2, 3); scene.add(dl);
-const cam = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.05, 50);
-const view = q.get('view') ?? 'front';
-const ty = Number(q.get('y') ?? 0.9), dist = Number(q.get('d') ?? 4.2);
-const ang = { front: 0, side: Math.PI / 2, back: Math.PI, q: Math.PI / 5 }[view] ?? Number(view);
-cam.position.set(Math.sin(ang) * dist, ty + 0.1, Math.cos(ang) * dist); cam.lookAt(0, ty, 0);
-const COL = [0xc99272, 0x3b6fd6, 0x22242c, 0xe8e8e8, 0xffffff, 0x2a1a10, 0xffffff, 0x111111, 0x8a2be2, 0xd03030, 0xb0b0b8, 0x101018];
-const want = (q.get('parts') ?? '').split(',').filter(Boolean);
-const tex = new THREE.TextureLoader();
-const mask = tex.load('/assets/characters/face_mask.png'); mask.flipY = false;
-const eye = tex.load('/assets/characters/eye.png'); eye.flipY = false; eye.colorSpace = THREE.SRGBColorSpace;
-new GLTFLoader().load(`/assets/characters/${q.get('id') ?? 'm1'}.glb`, (g) => {
-  const lod = g.scene.getObjectByName('LOD' + (q.get('lod') ?? 0))!;
-  g.scene.traverse((o) => { if (o.name.startsWith('LOD') && o !== lod && o.parent !== lod) o.visible = o.name === lod.name; });
-  let tris = 0;
-  lod.traverse((o) => {
-    const m = o as THREE.SkinnedMesh; if (!m.isSkinnedMesh) return;
-    const ex = m.geometry.userData as { name: string; part: string; hiddenBy?: string[] };
-    let show = ex.part === 'skin' ? !(ex.hiddenBy ?? []).some((h) => want.includes(h)) : ex.part === 'eyes' || want.includes(ex.name) || want.includes(ex.part);
-    m.visible = show; if (!show) return;
-    tris += m.geometry.index!.count / 3;
-    const reg = m.geometry.getAttribute('_region').getX(m.geometry.index!.getX(0));
-    const mat = new THREE.MeshStandardMaterial({ color: COL[reg], roughness: 0.7, side: THREE.DoubleSide, wireframe: q.has('wire') });
-    if (reg === 6) mat.color.set(0xf4f4f4);
-    if (reg === 0 && !q.has('nomask')) mat.map = mask, mat.color.set(0xffffff);
-    m.material = mat; m.frustumCulled = false;
-  });
-  scene.add(g.scene);
+scene.background = new THREE.Color(0x1a1a24);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x444455, 1.4));
+const dl = new THREE.DirectionalLight(0xffffff, 2.2); dl.position.set(2, 4, 3); scene.add(dl);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ color: 0x2a2a34 }));
+floor.rotation.x = -Math.PI / 2; scene.add(floor);
+scene.add(new THREE.GridHelper(40, 40, 0x555566, 0x333344));
+const n = Number(q.get('n') ?? 4), dist = Number(q.get('d') ?? 2.6 + n * 0.75), ty = Number(q.get('y') ?? 0.95);
+const ang = Number(q.get('view') ?? 0.35);
+const cam = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.05, 80);
+cam.position.set(Math.sin(ang) * dist, ty + 0.5, Math.cos(ang) * dist); cam.lookAt(0, ty, 0);
+loadCharTextures();
+const names = (q.get('clip') ?? 'hiphop_bounce').split(',');
+const bpm = Number(q.get('bpm') ?? 124), freeze = q.get('t');
+const seed0 = Number(q.get('seed') ?? 1);
+
+const arch = await loadArchetypes();
+const chars: Character[] = [];
+for (let i = 0; i < n; i++) {
+  const look = makeLook((seed0 + i * 7919) * 2654435761 >>> 0, Number(q.get('outfit') ?? 0), 0, arch);
+  const c = new Character(arch[look.arch], look);
+  c.group.position.x = (i - (n - 1) / 2) * 1.1;
+  c.play(names[i % names.length], 0);
+  scene.add(c.group);
+  chars.push(c);
+}
+const sel = document.createElement('select');
+sel.style.cssText = 'position:fixed;left:10px;top:10px;font:14px sans-serif';
+for (const k of Object.keys(CLIPS)) sel.add(new Option(k, k, false, k === names[0]));
+sel.onchange = () => chars.forEach((c) => (CLIPS[sel.value].loop === false ? c.playOnce(sel.value) : c.play(sel.value)));
+if (!q.has('shot')) document.body.appendChild(sel);
+
+const clock = new THREE.Clock();
+let beats = 0, frames = 0;
+function frame() {
+  const dt = Math.min(0.05, clock.getDelta());
+  beats = freeze !== null ? Number(freeze) : beats + (dt * bpm) / 60;
+  charGlobals.uTime.value += dt;
+  const stride = 1.3;
+  for (const c of chars) {
+    if (freeze !== null && CLIPS[c.clipName]?.unit === 'cycle') { c.update(0, 0, 0, 0); (c.mixer as any)._actions[0].time = Number(freeze); c.mixer.update(0); }
+    else c.update(freeze !== null ? 1e-4 : dt, beats, bpm / 60, stride);
+  }
   renderer.render(scene, cam);
-  document.title = 'ready ' + tris;
-});
+  if (++frames === 4) document.title = `ready ${renderer.info.render.triangles}`;
+  requestAnimationFrame(frame);
+}
+frame();
