@@ -64,13 +64,14 @@ else if (reg == 4) { cRough = 0.65; }
 else if (reg == 8) { cRough = 0.55; }
 else if (reg == 10) { cRough = 0.3; cMetal = 0.9; }
 else if (reg == 11) { cRough = 0.06; cMetal = 0.85; }
-cBase = mix(cBase, vec3(1.0, 0.76, 0.24), gold);
-cRough = mix(cRough, 0.26, gold); cMetal = mix(cMetal, 1.0, gold);
+float gk = reg == 0 || reg == 6 ? 0.25 * gold : gold;
+cBase = mix(cBase, vec3(1.0, 0.72, 0.22), gk);
+cRough = mix(cRough, 0.32, gk); cMetal = mix(cMetal, 0.85, gk);
 diffuseColor.rgb = cBase;`)
     .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = cRough;')
     .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = cMetal;')
     .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-totalEmissiveRadiance += vec3(1.0, 0.7, 0.2) * gold * (0.08 + 0.05 * sin(uTime * 7.0));
+totalEmissiveRadiance += vec3(1.0, 0.62, 0.15) * gold * (0.04 + 0.025 * sin(uTime * 7.0));
 if (reg == 0) totalEmissiveRadiance += cBase * vec3(0.05, 0.022, 0.018);`)
     .replace('#include <opaque_fragment>', `float cFres = dot(normal, normal) > 1e-8 ? pow(1.0 - saturate(dot(normalize(normal), normalize(vViewPosition))), 3.0) : 0.0;
 outgoingLight += uRim * cFres * (0.55 + 0.6 * gold) * (1.0 - 0.6 * cMetal);

@@ -24,9 +24,12 @@ const SHOTS: Shot[] = [
     name: 'user', weight: 2.5, needs: 'people', pose: (c, o) => {
       const p = c.target ? c.crowd.position(c.target) : null;
       if (!p) { o.pos.set(0, 3.2, 6); o.look.set(0, 1.5, -4); return; }
-      const h = c.crowd.headHeight(c.target!), a = c.t * 0.22 + c.seed;
-      o.look.set(p.x, p.y + h - 0.28, p.z);
-      o.pos.set(p.x + Math.sin(a) * 2.5, p.y + h + 0.3, p.z + Math.cos(a) * 2.5);
+      // in front of the person (their face), slightly above head height so the crowd does not block the view,
+      // with a slow sideways drift
+      const h = c.crowd.headHeight(c.target!), yaw = c.crowd.dancers.get(c.target!)?.shownYaw ?? c.seed;
+      const a = yaw + 0.55 * Math.sin(c.t * 0.25 + c.seed), r = 2.2 - 0.15 * Math.min(1, c.t / 6);
+      o.look.set(p.x, p.y + h - 0.38, p.z);
+      o.pos.set(p.x + Math.sin(a) * r, p.y + h + 0.6, p.z + Math.cos(a) * r);
     },
   },
 ];

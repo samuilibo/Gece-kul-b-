@@ -777,7 +777,10 @@ export class Club {
     // follow spot
     const fp = t < this.followUntil ? this.followPos?.() : null;
     this.follow.mesh.visible = !!fp;
-    if (fp) { this.follow.target.lerp(this.tmpV.copy(fp).setY(fp.y), Math.min(1, dt * 6)); this.aim(this.follow, this.tmpC.set(0xffe9b0), 1.3, 0.035, 200); }
+    if (fp) { this.follow.target.lerp(this.tmpV.copy(fp).setY(fp.y), Math.min(1, dt * 6)); this.aim(this.follow, this.tmpC.set(0xffe9b0), 0.9, 0.035, 70);
+      // the visible beam fades out when the camera is close to the person (no glare in close-ups); the light stays
+      const camD = this.engine.camera.position.distanceTo(this.follow.target);
+      this.follow.mat.uniforms.uPower.value *= THREE.MathUtils.smoothstep(camD, 2.5, 6); }
     else if (this.follow.light) this.follow.light.intensity = 0;
 
     // lasers
