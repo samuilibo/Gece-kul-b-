@@ -68,6 +68,9 @@ export class CameraDirector {
     if (s) this.cut(s, target, hold);
   }
 
+  /** Ends a temporary shot early (effect skipped by the admin); fixed admin shots stay. */
+  release() { if (!this.fixed) this.until = 0; }
+
   welcome(id: string) {
     if (!this.auto || this.fixed || this.time - this.lastWelcome < 45 || this.shot.name === 'user') return;
     this.lastWelcome = this.time;

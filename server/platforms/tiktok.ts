@@ -38,7 +38,7 @@ export function normalizeTikTok(kind: 'chat' | 'gift', e: Raw, seq: string): Cha
   const coins = each * count;
   return {
     id: `tt:gift:${msgId || `${author.id}:${e.giftId}:${e.groupId ?? ''}:${count}:${seq}`}`, source: 'tiktok', ts: Date.now(), author, kind: 'superchat', text: '',
-    amountText: `${name} ×${count}${coins ? ` (${coins.toLocaleString('en-US')} coins)` : ''}`, tier: tierFromUsd(coins * RATES.tiktokCoinUsd),
+    amountText: `${name} ×${count}${coins ? ` (${coins.toLocaleString('en-US')} coins)` : ''}`, tier: tierFromUsd(coins * RATES.tiktokCoinUsd), usd: coins * RATES.tiktokCoinUsd,
   };
 }
 

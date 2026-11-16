@@ -2,10 +2,10 @@ import { SOURCE_LABEL, type ClubEvent, type PublicState, type SupportEffect, typ
 
 type Lang = 'tr' | 'en';
 const T = {
-  tr: { inClub: 'KULÜPTE', now: 'ŞİMDİ ÇALIYOR', event: 'ETKİNLİK', next: 'SIRADAKİ', joined: 'kulübe katıldı', thanks: 'Teşekkürler', member: 'Yeni üye!', gift: 'Üyelik hediye etti!',
+  tr: { inClub: 'KULÜPTE', now: 'ŞİMDİ ÇALIYOR', event: 'ETKİNLİK', next: 'SIRADAKİ', joined: 'kulübe katıldı', thanks: 'Teşekkürler', member: 'Yeni üye!', gift: 'Üyelik hediye etti!', combo: 'Destekleriniz için teşekkürler!',
     hint: '!katıl yazarak kulübe gir  ·  !dans  ·  !shuffle  ·  !robot  ·  !zıpla  ·  !selam  ·  !kıyafet  ·  !renk  ·  !müzik <tür>  ·  !help', vote: 'OYLAMA', voteSong: 'Müzik türü — !müzik <tür>', voteEvent: 'Sıradaki etkinlik — !etkinlik <no>',
     demo: 'DEMO MODU · simüle edilmiş izleyiciler', audio: 'Sesi başlatmak için tıklayın', stopped: 'YAYIN DURAKLATILDI', sim: 'SİMÜLASYON', won: 'Kazanan' },
-  en: { inClub: 'IN THE CLUB', now: 'NOW PLAYING', event: 'EVENT', next: 'UP NEXT', joined: 'joined the club', thanks: 'Thank you', member: 'New member!', gift: 'Gifted memberships!',
+  en: { inClub: 'IN THE CLUB', now: 'NOW PLAYING', event: 'EVENT', next: 'UP NEXT', joined: 'joined the club', thanks: 'Thank you', member: 'New member!', gift: 'Gifted memberships!', combo: 'Thank you for the support!',
     hint: 'Type !join to enter the club  ·  !dance  ·  !shuffle  ·  !robot  ·  !jump  ·  !wave  ·  !outfit  ·  !color  ·  !song <genre>  ·  !help', vote: 'VOTE', voteSong: 'Music genre — !song <genre>', voteEvent: 'Next event — !event <no>',
     demo: 'DEMO MODE · simulated viewers', audio: 'Click to start audio', stopped: 'STREAM PAUSED', sim: 'SIMULATION', won: 'Winner' },
 };
@@ -108,10 +108,11 @@ export class Overlay {
     this.banner.replaceChildren();
     this.banner.className = `banner on tier${Math.min(7, e.tier)}`;
     const head = el('div', 'bh', this.banner);
-    el('span', '', head, e.kind === 'member' ? t.member : e.kind === 'gift' ? t.gift : `${t.thanks}!`);
+    el('span', '', head, e.kind === 'combo' ? t.combo : e.kind === 'member' ? t.member : e.kind === 'gift' ? t.gift : `${t.thanks}!`);
     if (e.source === 'demo') el('em', '', head, t.sim);
     else if (e.source !== 'youtube') el('em', `pl ${e.source}`, head, SOURCE_LABEL[e.source]);
-    el('div', 'bn', this.banner, e.name);
+    const others = e.others ?? [];
+    el('div', 'bn', this.banner, others.length ? `${[e.name, ...others.slice(0, 2)].join(', ')}${others.length > 2 ? ` +${others.length - 2}` : ''}` : e.name);
     if (e.amountText) el('div', 'ba', this.banner, e.amountText);
     if (e.comment) el('div', 'bc', this.banner, e.comment);
     clearTimeout(this.bannerTimer);

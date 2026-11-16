@@ -6,6 +6,7 @@ import {
 import { EVENTS, eventById } from '../../shared/events.ts';
 import { HELP_TEXT, fold, parseCommand } from './commands.ts';
 import { Moderation } from './moderation.ts';
+import { tierFromUsd } from '../platforms/common.ts';
 import type { Db } from '../db.ts';
 
 export interface ChatEvent {
@@ -18,6 +19,7 @@ export interface ChatEvent {
   text: string;
   amountText?: string;
   tier?: number;
+  usd?: number;              // approximate value, only used to merge tiny gifts (never shown)
 }
 
 type Audience = 'all' | 'admin';
@@ -56,7 +58,9 @@ export class ClubState {
   private cooldowns = new Map<string, number>();
   private globalCd = new Map<string, number>();
   private lastSeen = new Map<string, number>();
-  private supporters = new Set<string>();
+  private tempVip = new Map<string, number>();       // member id -> VIP access expires at
+  private privileged = new Set<string>();           // platform members / moderators / owner (VIP while present)
+  private small = new Map<string, { usd: number; parts: string[]; name: string; since: number; last: ChatEvent }>();
   private granted = new Set<string>();
   private stage = new Map<string, number>();        // member id -> leaves stage at
   private invites = new Map<string, { from: string; expires: number }>();
@@ -124,6 +128,11 @@ export class ClubState {
     else if (this.blockedIds.has(ev.author.id)) result = 'blocked';
     else {
       this.lastSeen.set(ev.author.id, now);
+      if (ev.author.isMember || ev.author.isMod || ev.author.isOwner) {      // e.g. became a channel member mid-stream
+        this.privileged.add(ev.author.id);
+        const pm = this.members.get(ev.author.id);
+        if (pm && !pm.vip) { pm.vip = true; this.sendUpdate(pm); }
+      }
       if (ev.kind !== 'text' && ev.kind !== 'other') result = this.handleSupport(ev, name, now);
       if (ev.kind === 'text' || ev.kind === 'superchat' || ev.kind === 'milestone') {
         const cmd = parseCommand(ev.text);
@@ -162,16 +171,7 @@ export class ClubState {
     if (cmd === 'join') {
       if (me) return 'already-in';
       if (this.members.size >= this.settings.maxCharacters) return 'full';
-      const stored = this.db.getMember(id);
-      const privileged = !!(ev.author.isMember || ev.author.isMod || ev.author.isOwner);
-      const m: Member = {
-        id, name, avatar: ev.author.avatar, source: ev.source, seed: hashSeed(id), outfit: stored?.outfit ?? 0,
-        color: stored?.color ?? 0, zone: 'floor', sitting: false, joinedAt: now,
-        vip: privileged || this.supporters.has(id) || this.granted.has(id) || !!stored?.vip,
-      };
-      this.members.set(id, m);
-      this.persist(m, now);
-      this.send({ t: 'join', member: m }, 'all');
+      this.addMember(ev, name, now);
       return done('joined');
     }
     if (cmd === 'help') {
@@ -241,6 +241,23 @@ export class ClubState {
     }
   }
 
+  private addMember(ev: ChatEvent, name: string, now: number) {
+    const id = ev.author.id;
+    const stored = this.db.getMember(id);
+    if (stored?.vip) this.granted.add(id);                                   // DB vip flag = granted by the admin
+    if (ev.author.isMember || ev.author.isMod || ev.author.isOwner) this.privileged.add(id);
+    const m: Member = {
+      id, name, avatar: ev.author.avatar, source: ev.source, seed: hashSeed(id), outfit: stored?.outfit ?? 0,
+      color: stored?.color ?? 0, zone: 'floor', sitting: false, joinedAt: now, vip: this.hasVip(id, now),
+    };
+    this.members.set(id, m);
+    this.persist(m, now);
+    this.send({ t: 'join', member: m }, 'all');
+    return m;
+  }
+
+  private hasVip(id: string, now: number) { return this.privileged.has(id) || this.granted.has(id) || (this.tempVip.get(id) ?? 0) > now; }
+
   private toStage(m: Member, now: number) {
     m.zone = 'stage'; m.sitting = false;
     this.stage.set(m.id, now + STAGE_MS);
@@ -280,31 +297,84 @@ export class ClubState {
   // ------------------------------------------------------------------ paid / membership events (cosmetic only)
   private handleSupport(ev: ChatEvent, name: string, now: number): string {
     const sc = this.settings.superchat;
-    const tier = Math.max(0, Math.min(11, ev.tier ?? (ev.kind === 'superchat' || ev.kind === 'sticker' ? 1 : 3)));
-    if (tier < 1) return 'support:below-min';           // tiny gifts (e.g. single TikTok roses): logged, no effect
-    if (this.settings.supporterVip) {
-      this.supporters.add(ev.author.id);
-      const m = this.members.get(ev.author.id);
-      if (m && !m.vip) { m.vip = true; this.persist(m, now); this.sendUpdate(m); }
+    let tier = Math.max(0, Math.min(11, ev.tier ?? (ev.kind === 'superchat' || ev.kind === 'sticker' ? 1 : 3)));
+    let amountText = ev.amountText ?? '';
+    const id = ev.author.id, anonymous = id.endsWith(':anonymous');
+    // 1) tiny gifts (single TikTok roses, a few Bits…) are added up per person for 2 minutes;
+    //    once they are worth a real tier they trigger ONE effect for the total.
+    if (tier < 1) {
+      if (!ev.usd || ev.usd <= 0 || anonymous) return 'support:below-min';
+      const acc = this.small.get(id) ?? { usd: 0, parts: [], name, since: now, last: ev };
+      acc.usd += ev.usd; acc.parts.push(amountText); acc.last = ev;
+      tier = tierFromUsd(acc.usd);
+      if (tier < 1) { this.small.set(id, acc); return 'support:accumulating'; }
+      this.small.delete(id);
+      amountText = acc.parts.length > 3 ? `${acc.parts.slice(0, 3).join(' + ')} + …` : acc.parts.join(' + ');
     }
+    // 2) cosmetic perks — never gameplay advantages
+    if (!anonymous) this.grantTempVip(id, now);
+    if (!anonymous && this.settings.supporterAutoJoin && !this.members.has(id) && this.members.size < this.settings.maxCharacters) this.addMember(ev, name, now);
     if (!sc.enabled) return 'support:effects-off';
     if (this.queue.length >= MAX_QUEUE) return 'support:queue-full';
     const effects = SC_EFFECTS.filter((e) => sc.effects[e].on && tier >= sc.effects[e].minTier);
-    const effect: SupportEffect = {
+    this.queue.push({
       uid: `fx${++this.uidCounter}-${now}`,
       kind: ev.kind === 'superchat' ? 'superchat' : ev.kind === 'sticker' ? 'sticker' : ev.kind === 'gift' ? 'gift' : 'member',
-      source: ev.source, memberId: ev.author.id, name, amountText: ev.amountText ?? '',
-      comment: this.mod.isProfane(ev.text) ? '' : ev.text.slice(0, 120), tier, effects,
+      source: ev.source, memberId: id, name, amountText,
+      comment: sc.showComments ? this.cleanComment(ev.text) : '', tier, effects,
       durationMs: Math.min(20000, sc.baseDurationMs + (tier - 1) * 1300),
-    };
-    this.queue.push(effect);
+    });
+    this.compactQueue();
     this.pump(now);
     return `support:queued(${effects.length})`;
   }
 
+  /** Paid messages are shown on stream, so they get the strictest filter: no profanity, links or @mentions. */
+  private cleanComment(text: string) {
+    const t = text.replace(/https?:\/\/\S+|www\.\S+|\S+\.(com|net|org|gg|io|xyz|tv|me|ly)(\/\S*)?/gi, '').replace(/@\S+/g, '').replace(/\s+/g, ' ').trim();
+    return !t || this.mod.isProfane(t) ? '' : t.slice(0, 120);
+  }
+
+  private grantTempVip(id: string, now: number) {
+    const min = this.settings.supporterVipMinutes;
+    if (min <= 0) return;
+    this.tempVip.set(id, Math.max(this.tempVip.get(id) ?? 0, now + min * 60000));
+    const m = this.members.get(id);
+    if (m && !m.vip) { m.vip = true; this.sendUpdate(m); }
+  }
+
+  /**
+   * Gift bombs / sub trains: when many supports wait, the small ones are merged into one "combo" banner
+   * so nobody waits minutes for their thank-you and the stream is not one long effect show.
+   */
+  private compactQueue() {
+    if (this.queue.length < 6) return;
+    const small = this.queue.filter((e) => e.tier <= 3 && e.kind !== 'combo');
+    if (small.length < 3) return;
+    const keep = this.queue.filter((e) => !small.includes(e));
+    const first = small[0];
+    const names = [...new Set(small.map((e) => e.name))];
+    const tier = Math.max(...small.map((e) => e.tier));
+    const combo: SupportEffect = {
+      ...first, uid: `${first.uid}-combo`, kind: 'combo', name: names[0], others: names.slice(1), amountText: '', comment: '',
+      tier, effects: first.effects.filter((x) => x === 'confetti' || x === 'djMessage' || x === 'spotlight'), durationMs: this.settings.superchat.baseDurationMs + 2000,
+    };
+    this.queue = [combo, ...keep];
+  }
+
+  /** Admin: skip the running effect or drop everything that is waiting. */
+  stopEffects(clearQueue: boolean, now = Date.now()) {
+    if (clearQueue) this.queue = [];
+    this.activeUntil = 0;
+    this.send({ t: 'effectStop' }, 'all');
+    this.pump(now);
+  }
+
   private pump(now: number) {
     if (this.emergency || now < this.activeUntil || !this.queue.length) return;
-    const e = this.queue.shift()!;
+    const e = { ...this.queue.shift()! };
+    // with a backlog every effect runs shorter (min 4 s) so the queue drains quickly
+    if (this.queue.length >= 3) e.durationMs = Math.max(4000, Math.round(e.durationMs * (this.queue.length >= 8 ? 0.5 : 0.7)));
     this.activeUntil = now + e.durationMs + 600;
     const m = this.members.get(e.memberId);
     if (m && e.effects.includes('stage') && m.zone !== 'stage' && this.stage.size < STAGE_CAPACITY) this.toStage(m, now);
@@ -313,6 +383,7 @@ export class ClubState {
 
   // ------------------------------------------------------------------ admin operations
   remove(id: string, why: string) {
+    this.privileged.delete(id);
     if (!this.members.delete(id)) return;
     this.stage.delete(id);
     this.invites.delete(id);
@@ -330,10 +401,10 @@ export class ClubState {
   unblock(id: string) { this.blockedIds.delete(id); this.db.unblock(id); }
 
   grantVip(id: string, on: boolean, now = Date.now()) {
-    if (on) this.granted.add(id); else this.granted.delete(id);
+    if (on) this.granted.add(id); else { this.granted.delete(id); this.tempVip.delete(id); }
     const m = this.members.get(id);
     if (m) {
-      m.vip = on;
+      m.vip = this.hasVip(id, now);
       if (!on && m.zone === 'vip' && !this.settings.vipOpen) m.zone = 'floor';
       this.persist(m, now);
       this.sendUpdate(m);
@@ -380,6 +451,17 @@ export class ClubState {
       if (m && m.zone === 'stage') { m.zone = 'floor'; this.sendUpdate(m); }
     }
     for (const [id, inv] of this.invites) if (inv.expires < now) this.invites.delete(id);
+    for (const [id, acc] of this.small) if (now - acc.since > 120000) this.small.delete(id);      // stayed below the first tier: thanks in the log only
+    for (const [id, until] of this.tempVip) {
+      if (until > now) continue;
+      this.tempVip.delete(id);
+      const m = this.members.get(id);
+      if (m && m.vip && !this.hasVip(id, now)) {
+        m.vip = false;
+        if (m.zone === 'vip' && !this.settings.vipOpen) { m.zone = 'floor'; m.sitting = false; }
+        this.sendUpdate(m);
+      }
+    }
     if (this.vote && this.vote.endsAt <= now) this.closeVote(now);
     if (this.settings.eventVoting && !this.eventVoteOpened && !this.vote && this.mode !== 'idle'
       && this.members.size > 0 && this.eventEndsAt - now < EVENT_VOTE_MS) this.openEventVote(now);
@@ -430,7 +512,7 @@ export class ClubState {
 
   private persist(m: Member, now: number) {
     if (m.source === 'demo') return;   // simulated users are never stored
-    this.db.saveMember({ id: m.id, name: m.name, outfit: m.outfit, color: m.color, vip: m.vip ? 1 : 0 }, now);
+    this.db.saveMember({ id: m.id, name: m.name, outfit: m.outfit, color: m.color, vip: this.granted.has(m.id) ? 1 : 0 }, now);   // only admin grants are permanent
   }
 }
 

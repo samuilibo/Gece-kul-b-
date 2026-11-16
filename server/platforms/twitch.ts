@@ -34,7 +34,7 @@ export function normalizeTwitch(subType: string, ev: Raw, msgId: string): ChatEv
     if (bits > 0) {
       // remove the "Cheer100" tokens so a command in the same message still parses
       const clean = text.replace(/(^|\s)[A-Za-z]+\d+(?=\s|$)/g, ' ').trim();
-      return { ...base, kind: 'superchat', text: clean, amountText: `${bits.toLocaleString('en-US')} Bits`, tier: tierFromUsd(bits * RATES.bitUsd) };
+      return { ...base, kind: 'superchat', text: clean, amountText: `${bits.toLocaleString('en-US')} Bits`, tier: tierFromUsd(bits * RATES.bitUsd), usd: bits * RATES.bitUsd };
     }
     return { ...base, kind: 'text', text };
   }

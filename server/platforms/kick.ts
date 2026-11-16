@@ -40,7 +40,7 @@ export function normalizeKick(type: string, body: Raw, messageId: string): ChatE
     }
     case 'kicks.gifted': {
       const amount = Number(body.gift?.amount) || 0;
-      return { ...base, author: user(body.sender), kind: 'superchat', text: String(body.gift?.message ?? ''), amountText: `${amount.toLocaleString('en-US')} KICKs${body.gift?.name ? ` · ${body.gift.name}` : ''}`, tier: tierFromUsd(amount * RATES.kickUsd) };
+      return { ...base, author: user(body.sender), kind: 'superchat', text: String(body.gift?.message ?? ''), amountText: `${amount.toLocaleString('en-US')} KICKs${body.gift?.name ? ` · ${body.gift.name}` : ''}`, tier: tierFromUsd(amount * RATES.kickUsd), usd: amount * RATES.kickUsd };
     }
     case 'livestream.status.updated':
       return body.is_live === false ? 'ended' : null;

@@ -171,6 +171,7 @@ async function onAdmin(msg: AdminMsg) {
       if (msg.on) { disconnectAll(); if (demo.running) demo.stop(); club.setMode('idle'); }
       break;
     case 'clearLogs': db.clearLogs(); break;
+    case 'effects': club.stopEffects(msg.cmd === 'clear'); break;
   }
   pushStatus();
 }

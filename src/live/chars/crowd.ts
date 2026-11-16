@@ -243,6 +243,7 @@ export class Crowd {
     this.route(A, A.slot); this.route(B, B.slot);
   }
 
+  clearGold() { for (const d of this.dancers.values()) d.goldUntil = 0; }
   gold(id: string, seconds: number, now: number) { const d = this.dancers.get(id); if (d) d.goldUntil = now + seconds; }
   position(id: string): THREE.Vector3 | null { const d = this.dancers.get(id); return d && d.state !== 'leave' ? d.pos : null; }
   headHeight(id: string) { return this.dancers.get(id)?.ch.headY ?? 1.7; }

@@ -686,6 +686,7 @@ export class Club {
 
   lightShow(seconds: number, now: number) { this.showUntil = Math.max(this.showUntil, now + seconds); }
   lightTest(now: number) { this.testUntil = now + 6; }
+  stopEffects() { this.followUntil = 0; this.showUntil = 0; this.textUntil = 0; this.testUntil = 0; }
 
   /** Follow-spot on a character (Super Chat effect). */
   spotlight(getPos: () => THREE.Vector3 | null, seconds: number, now: number) { this.followPos = getPos; this.followUntil = now + seconds; }

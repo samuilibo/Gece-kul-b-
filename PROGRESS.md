@@ -39,6 +39,14 @@ Hedef PC'de: `/live` OBS'de açıkken panel → *Benchmark çalıştır* veya `n
 * Doğrulama: 10 yeni test (sahte Twitch WebSocket sunucusu, Kick imza/webhook, TikTok seri sayımı, çok platformlu kulüp).
   Gerçek Twitch/Kick/TikTok sunucularına bu ortamdan erişilemedi → 🟡.
 
+## Ek: Destek politikası
+
+* Efekt merdiveni (1 $ → 50 $+), ~1 $ altındaki hediyelerin 2 dk boyunca kişi başı toplanması.
+* Geçici VIP (varsayılan 60 dk), destekçinin otomatik katılımı (kapasite dahilinde), kalıcı VIP yalnızca yönetici verirse.
+* Hediye yağmurunda toplu teşekkür bandı ve hızlanan kuyruk; panelde Efekti atla / Kuyruğu temizle.
+* Ücretli mesajlarda link/@etiket/küfür filtresi; para sıralaması ve "şu kadar gönder" hedefi bilerek yok.
+* 8 yeni test (toplam 45) ve ekran görüntüsüyle toplu bant + atlama kontrolü.
+
 ## Bilinen sınırlamalar / yapılacaklar
 
 * Karakter kıyafetleri ve saçları prosedürel (CC0 taban mesh'in yardımcı geometrisinden); MakeHuman'ın

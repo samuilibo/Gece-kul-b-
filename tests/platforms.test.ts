@@ -131,7 +131,7 @@ describe('club with several platforms', () => {
     c.handleChat(ev('tt:j', 'tiktok', 'tt:9', '!join'), 0);
     expect(c.handleChat(ev('tt:g1', 'tiktok', 'tt:9', '', { kind: 'superchat', amountText: 'Rose ×1', tier: 0 }), 1000)).toBe('support:below-min');
     expect(c.members.get('tt:9')!.vip).toBe(false);
-    c.patchSettings({ supporterVip: false });
+    c.patchSettings({ supporterVipMinutes: 0 });
     c.handleChat(ev('tt:g2', 'tiktok', 'tt:9', '', { kind: 'superchat', amountText: 'Galaxy ×1', tier: 3 }), 2000);
     expect(c.members.get('tt:9')!.vip).toBe(false);
     expect(sent.filter((m) => m.t === 'effect')).toHaveLength(1);

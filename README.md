@@ -132,16 +132,37 @@ Every command has a per-user cooldown and an on/off switch in the panel. Spam (r
 profanity in commands and inappropriate display names (replaced by `MisafirNNNN`) are filtered; add your own
 words with `BAD_WORDS` in `.env`. Blocked channels are stored in SQLite.
 
-## 5. Super Chat / Super Sticker / memberships
+## 5. Super Chat, gifts, Bits, KICKs, memberships — support policy
 
-Real events from the API trigger **cosmetic** effects only — spotlight, golden avatar, DJ-screen thank-you,
-confetti, indoor fireworks, special camera, stage time, light show, special dance — chosen by YouTube's tier
-and configurable per effect in the panel. The on-stream banner shows the supporter name and the amount
-**exactly as YouTube formats it** (original currency). Effects are queued, never overlap, and never replay.
-Free viewers get the complete experience; there is no gambling, no paid random rewards and no fake activity.
+Principles: **thank people visibly, never sell gameplay.** Free viewers get every command and every area
+(VIP can also be opened to everyone). Nothing is random, nothing is a bet, there is no public money leaderboard
+and no "send X to unlock Y" goal, so nobody is pressured to pay.
 
-Demo-mode events are generated only while demo mode is on, are labelled **SİMÜLASYON / SIMULATION** on stream,
-use `demo:` ids, and are rejected by the server whenever a real stream is connected.
+**Effect ladder** (YouTube tiers; other platforms are converted approximately, see 3b). Each step adds to the previous:
+
+| Tier | ≈ value | What happens |
+| --- | --- | --- |
+| below 1 | < $1 | nothing on stream; small gifts from the same person are **added up for 2 min** and fire once they reach $1 |
+| 1 | $1 | thank-you banner (name + amount exactly as the platform reports it) + follow-spot on the avatar |
+| 2 | $2 | + thank-you on the giant LED wall behind the DJ |
+| 3 | $5 (memberships / subs) | + golden avatar + confetti |
+| 4 | $10 | + close-up camera + special dance |
+| 5 | $20 | + club-wide light show |
+| 6+ | $50+ | + indoor fireworks + 45 s on stage |
+
+**Cosmetic perks:** supporters get **temporary VIP access** (default 60 min, panel setting, 0 = off). Channel
+members / subscribers / moderators are VIP while they are in the club. Only VIP granted by you in the panel is permanent.
+A supporter who is not in the club yet **walks in automatically** if there is room (never above the character limit,
+never for anonymous gifts).
+
+**Fair queue:** effects never overlap. With a backlog every effect runs shorter (min 4 s), and during a gift bomb or
+sub train the small ones are merged into one **combo banner** (“Thank you for the support! A, B, C +4”) so nobody
+waits minutes for their thank-you. Big ones still get their own moment.
+
+**Safety:** paid messages are shown only after the strictest filter (profanity, links and @mentions removed; can be
+switched off entirely). Blocked users trigger nothing. Old or duplicated events never replay. The panel has
+**Skip effect**, **Clear queue** and the emergency stop. Demo events are labelled SIMULATION and refused while a real
+stream is connected. Gift recipients (gifted subs) get no paid effect — the gifter is thanked.
 
 ## 6. Music
 

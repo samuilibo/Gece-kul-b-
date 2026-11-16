@@ -89,7 +89,7 @@ function runEffect(e: SupportEffect) {
   for (const fx of e.effects) {
     if (fx === 'spotlight' && present) club.spotlight(() => crowd.position(id), sec, now);
     else if (fx === 'gold' && present) crowd.gold(id, sec, now);
-    else if (fx === 'djMessage') club.djMessage([overlay.lang === 'tr' ? 'TEŞEKKÜRLER' : 'THANK YOU', e.name, e.amountText || (overlay.lang === 'tr' ? 'YENİ ÜYE' : 'NEW MEMBER')], Math.min(sec, 9), now);
+    else if (fx === 'djMessage') club.djMessage([overlay.lang === 'tr' ? 'TEŞEKKÜRLER' : 'THANK YOU', e.name + (e.others?.length ? ` +${e.others.length}` : ''), e.amountText || (e.kind === 'combo' ? '♥' : overlay.lang === 'tr' ? 'YENİ ÜYE' : 'NEW MEMBER')], Math.min(sec, 9), now);
     else if (fx === 'confetti') effects.confetti(new THREE.Vector3(pos.x, pos.y + 3.6, pos.z), 160 + e.tier * 40);
     else if (fx === 'fireworks') effects.fireworks(now, sec * 0.8, crowd.center(new THREE.Vector3()));
     else if (fx === 'camera' && present) director.request('user', id, Math.min(sec, 9));
@@ -129,6 +129,7 @@ function onMessage(m: ServerMsg) {
     case 'camera': if (m.hold) director.request(m.shot, m.target ?? null, m.hold); else director.setMode(m.shot, m.target); break;
     case 'test': runTest(m.what, m.arg); break;
     case 'emergency': setEmergency(m.on); break;
+    case 'effectStop': overlay.clearSupport(); effects.clear(); club.stopEffects(); crowd.clearGold(); director.release(); djHypeUntil = 0; break;
   }
 }
 

@@ -54,7 +54,8 @@ export type ScEffect = (typeof SC_EFFECTS)[number];
 
 export interface SupportEffect {
   uid: string;                       // unique id of this effect run
-  kind: 'superchat' | 'sticker' | 'member' | 'gift';
+  kind: 'superchat' | 'sticker' | 'member' | 'gift' | 'combo';
+  others?: string[];                 // combo: further supporters merged into this banner
   source: Source;
   memberId: string;                  // channel id of the supporter
   name: string;
@@ -84,7 +85,7 @@ export interface MusicInfo {
 
 export interface LightSettings { intensity: number; lasers: boolean; fog: number; strobe: boolean; mode: 'auto' | ClubEvent['light'] }
 export interface MusicSettings { volume: number; shuffle: boolean; repeat: 'off' | 'all' | 'one'; crossfade: number; bpmOverride: number; source: 'auto' | 'files' | 'builtin' }
-export interface ScSettings { enabled: boolean; effects: Record<ScEffect, { on: boolean; minTier: number }>; baseDurationMs: number }
+export interface ScSettings { showComments: boolean; enabled: boolean; effects: Record<ScEffect, { on: boolean; minTier: number }>; baseDurationMs: number }
 
 export interface Settings {
   maxCharacters: number;
@@ -104,7 +105,8 @@ export interface Settings {
   cameraAuto: boolean;
   minPollMs: number;
   welcomeCamera: boolean;
-  supporterVip: boolean;         // supporters (tier >= 1) automatically get VIP access
+  supporterVipMinutes: number;   // one-off supporters get TEMPORARY VIP access for this long (0 = off)
+  supporterAutoJoin: boolean;    // a supporter who is not in the club yet walks in (only if there is room)
   platforms: { twitch: { channel: string }; kick: { channel: string }; tiktok: { username: string; acceptUnofficial: boolean } };
 }
 
@@ -147,6 +149,7 @@ export type ServerMsg =
   | { t: 'camera'; shot: string; target?: string; hold?: number }
   | { t: 'test'; what: string; arg?: string }
   | { t: 'emergency'; on: boolean }
+  | { t: 'effectStop' }
   // admin only
   | { t: 'chat'; item: ChatLogItem }
   | { t: 'log'; item: LogItem }
@@ -207,6 +210,7 @@ export type AdminMsg =
   | { t: 'emergency'; on: boolean }
   | { t: 'grantVip'; id: string; on: boolean }
   | { t: 'clearLogs' }
+  | { t: 'effects'; cmd: 'skip' | 'clear' }
   | { t: 'platform'; platform: Platform; cmd: 'connect' | 'disconnect' | 'login' | 'logout'; channel?: string };
 
 export const DEFAULT_COOLDOWNS: Record<CommandName, number> = {
@@ -217,13 +221,14 @@ export const DEFAULT_COOLDOWNS: Record<CommandName, number> = {
 export function defaultSettings(): Settings {
   const commands = {} as Settings['commands'];
   for (const c of COMMANDS) commands[c] = { on: true, cooldown: DEFAULT_COOLDOWNS[c] };
-  const tiers: Record<ScEffect, number> = { spotlight: 1, djMessage: 1, gold: 2, confetti: 2, dance: 3, camera: 3, lightshow: 4, fireworks: 5, stage: 5 };
+  // Effect ladder (YouTube tiers: 1 ≈ $1, 2 ≈ $2, 3 ≈ $5, 4 ≈ $10, 5 ≈ $20, 6 ≈ $50+). Every step adds to the previous one.
+  const tiers: Record<ScEffect, number> = { spotlight: 1, djMessage: 2, gold: 3, confetti: 3, camera: 4, dance: 4, lightshow: 5, fireworks: 6, stage: 6 };
   const effects = {} as ScSettings['effects'];
   for (const e of SC_EFFECTS) effects[e] = { on: true, minTier: tiers[e] };
   return {
     maxCharacters: 100,
     commands,
-    superchat: { enabled: true, effects, baseDurationMs: 7000 },
+    superchat: { enabled: true, showComments: true, effects, baseDurationMs: 6000 },
     music: { volume: 0.8, shuffle: true, repeat: 'all', crossfade: 4, bpmOverride: 0, source: 'auto' },
     lights: { intensity: 1, lasers: true, fog: 0.6, strobe: false, mode: 'auto' },
     quality: 'high',
@@ -238,7 +243,8 @@ export function defaultSettings(): Settings {
     cameraAuto: true,
     minPollMs: 3000,
     welcomeCamera: true,
-    supporterVip: true,
+    supporterVipMinutes: 60,
+    supporterAutoJoin: true,
     platforms: { twitch: { channel: '' }, kick: { channel: '' }, tiktok: { username: '', acceptUnofficial: false } },
   };
 }

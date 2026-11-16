@@ -13,7 +13,9 @@ const I18N: Record<string, [string, string]> = {
   kickHelp: ['Resmi Kick API webhook ile çalışır: bilgisayardaki webhook portunu bir tünelle (ör. Cloudflare Tunnel) internete açın ve Kick geliştirici ayarlarında Webhook URL olarak girin. Yalnızca bu port açılır, panel açılmaz.', 'Official Kick API via webhooks: expose the webhook port with a tunnel (e.g. Cloudflare Tunnel) and set it as the Webhook URL in Kick developer settings. Only that port is exposed, not the panel.'],
   ttHelp: ['TikTok’un resmi canlı sohbet API’si yok. Bu bağlantı gayri resmi bir topluluk kütüphanesi ve üçüncü taraf imza servisi (Euler Stream) kullanır; her an bozulabilir ve TikTok kurallarıyla çelişebilir. Sorumluluk sizdedir. Kütüphane AGPL-3.0 lisanslıdır ve projeye dahil değildir: bir kez “npm run enable-tiktok” çalıştırın.', 'TikTok has no official LIVE chat API. This uses an unofficial community library and a third-party signing service (Euler Stream); it can break at any time and may conflict with TikTok’s terms. Use at your own risk. The library is AGPL-3.0 and not bundled: run “npm run enable-tiktok” once.'],
   accept: ['Riskleri anladım, gayri resmi bağlantıya izin ver', 'I understand the risks, allow the unofficial connector'], webhookPort: ['Webhook portu', 'Webhook port'],
-  supporterVip: ['Destekçiler otomatik VIP olsun', 'Supporters get VIP automatically'],
+  supporterVip: ['Destekçiye geçici VIP (dk, 0 = kapalı)', 'Temporary VIP for supporters (min, 0 = off)'],
+  autoJoin: ['Destekçi kulüpte değilse otomatik katılsın', 'Supporters not in the club join automatically'], showComments: ['Destek mesajlarını göster', 'Show supporter messages'],
+  skip: ['Efekti atla', 'Skip effect'], clearQueue: ['Kuyruğu temizle', 'Clear queue'],
   creds: ['Kimlik bilgileri', 'Credentials'], minPoll: ['Min. sorgu aralığı (ms)', 'Min poll interval (ms)'], apiKey: ['API anahtarı', 'API key'], oauth: ['OAuth', 'OAuth'], set: ['tanımlı', 'set'], notSet: ['tanımlı değil', 'not set'],
   credHelp: ['Anahtarlar yalnızca sunucudaki .env dosyasında tutulur ve tarayıcıya hiç gönderilmez. Değiştirmek için .env dosyasını düzenleyip sunucuyu yeniden başlatın.', 'Keys live only in the server-side .env file and are never sent to the browser. Edit .env and restart the server to change them.'],
   state: ['Durum', 'State'], transport: ['Aktarım', 'Transport'], video: ['Video', 'Video'], quota: ['Kullanılan kota (birim)', 'Quota used (units)'], msgs: ['İşlenen mesaj', 'Messages'],
@@ -94,7 +96,9 @@ function render() {
 <section><h2>${t('superchat')}</h2><div class="row"><label>${t('effectsOn')}</label>${chk('scOn', s.superchat.enabled)}<span class="mut">${t('queue')}: <b id="scQueue">0</b></span></div>
   <div class="row"><label>${t('baseDur')}</label><input type="number" id="scDur" min="2000" max="20000" step="500" value="${s.superchat.baseDurationMs}"></div>
   <table>${SC_EFFECTS.map((e) => `<tr><td>${e}</td><td>${chk(`sc_on_${e}`, s.superchat.effects[e].on)}</td><td>${t('minTier')} <input type="number" min="1" max="11" id="sc_t_${e}" value="${s.superchat.effects[e].minTier}"></td></tr>`).join('')}</table>
-  <div class="row"><label>${t('supporterVip')}</label>${chk('supVip', s.supporterVip)}</div>
+  <div class="row"><label>${t('supporterVip')}</label><input type="number" id="supVip" min="0" max="600" value="${s.supporterVipMinutes}"></div>
+  <div class="row"><label>${t('autoJoin')}</label>${chk('autoJoin', s.supporterAutoJoin)}<label style="min-width:0">${t('showComments')}</label>${chk('scCom', s.superchat.showComments)}</div>
+  <div class="row"><button id="fxSkip">⏭ ${t('skip')}</button><button id="fxClear">${t('clearQueue')}</button></div>
   <p class="mut">${t('scNote')}</p></section>
 <section><h2>${t('music')}</h2><div class="kv" id="musicInfo"></div>
   <div class="row"><button id="mPrev">⏮ ${t('prev')}</button><button id="mToggle">⏯ ${t('toggle')}</button><button id="mNext">${t('next')} ⏭</button><button id="mRescan">${t('rescan')}</button></div>
@@ -148,7 +152,10 @@ function bind() {
   on('ytConnect', 'click', () => { localStorage.setItem('nc-url', val('ytUrl')); send({ t: 'connect', url: val('ytUrl') }); });
   on('ytDisconnect', 'click', () => send({ t: 'disconnect' }));
   on('maxChars', 'change', () => patch({ maxCharacters: num('maxChars') }));
-  on('supVip', 'change', () => patch({ supporterVip: checked('supVip') }));
+  on('supVip', 'change', () => patch({ supporterVipMinutes: Math.max(0, num('supVip')) }));
+  on('autoJoin', 'change', () => patch({ supporterAutoJoin: checked('autoJoin') }));
+  on('fxSkip', 'click', () => send({ t: 'effects', cmd: 'skip' }));
+  on('fxClear', 'click', () => send({ t: 'effects', cmd: 'clear' }));
   on('ttAccept', 'change', () => patch({ platforms: { ...state!.settings.platforms, tiktok: { ...state!.settings.platforms.tiktok, acceptUnofficial: checked('ttAccept') } } }));
   document.querySelectorAll<HTMLElement>('[data-pl]').forEach((b) => b.addEventListener('click', () => {
     const p = b.dataset.pl as 'twitch' | 'kick' | 'tiktok', c = b.dataset.c as 'connect' | 'disconnect' | 'login' | 'logout';
@@ -162,9 +169,9 @@ function bind() {
   const scUpd = () => {
     const effects = { ...s.superchat.effects };
     for (const e of SC_EFFECTS) effects[e] = { on: checked(`sc_on_${e}`), minTier: num(`sc_t_${e}`) };
-    patch({ superchat: { enabled: checked('scOn'), baseDurationMs: num('scDur'), effects } });
+    patch({ superchat: { enabled: checked('scOn'), showComments: checked('scCom'), baseDurationMs: num('scDur'), effects } });
   };
-  on('scOn', 'change', scUpd); on('scDur', 'change', scUpd);
+  on('scOn', 'change', scUpd); on('scDur', 'change', scUpd); on('scCom', 'change', scUpd);
   for (const e of SC_EFFECTS) { on(`sc_on_${e}`, 'change', scUpd); on(`sc_t_${e}`, 'change', scUpd); }
   const mUpd = () => { $('xfV').textContent = val('xf'); patch({ music: { volume: num('vol'), crossfade: num('xf'), bpmOverride: num('bpmO'), shuffle: checked('shuf'), repeat: val('rep') as Settings['music']['repeat'], source: val('msrc') as Settings['music']['source'] } }); };
   for (const id of ['vol', 'xf']) on(id, 'input', mUpd);
