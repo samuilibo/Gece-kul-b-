@@ -1,6 +1,7 @@
 // Runs the in-app benchmark against a running server (npm start) and prints the measured result.
 // usage: node tools/benchmark.mjs [characters=100] [quality=high]   (PORT env, default 3000)
 // Open http://localhost:PORT/live in Chrome/Edge or OBS on the target PC first: the measurement happens there.
+import 'dotenv/config';             // reads PORT and ADMIN_TOKEN from .env
 import { WebSocket } from 'ws';
 import { mkdirSync, writeFileSync } from 'node:fs';
 const port = process.env.PORT ?? 3000, n = Number(process.argv[2] ?? 100), quality = process.argv[3] ?? 'high';

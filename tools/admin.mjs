@@ -1,4 +1,5 @@
 // CLI helper: node tools/admin.mjs '{"t":"demo","cmd":"start","count":50}' [more json...]   (PORT env, default 3000)
+import 'dotenv/config';             // reads PORT and ADMIN_TOKEN from .env
 import { WebSocket } from 'ws';
 const port = process.env.PORT ?? 3000;
 const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?role=admin&token=${process.env.ADMIN_TOKEN ?? ''}`);
